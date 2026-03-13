@@ -589,8 +589,11 @@ function ProfileTab({c,t,sessions,restDaysLog,plans,profileName,setProfileName,p
   </div>);
 }
 
-const root=ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App/>);
+window.__mountApp=()=>{
+  const root=ReactDOM.createRoot(document.getElementById('root'));
+  root.render(<App/>);
+};
+if(window.__kinaraReady)window.__mountApp();
 </script>
 </body>
 </html>
