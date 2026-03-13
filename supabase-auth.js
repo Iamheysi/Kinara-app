@@ -156,23 +156,52 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 
   // ── Global API for React app ──────────────────────────────────────────────────
 
-  // Debounced save — called from useEffect hooks in App()
-  window.__kinaraSave = debounce(async (key, value) => {
-    if (!currentUserId || signingOut) return;
-    try {
-      if (key === 'sessions')  await syncSessions(currentUserId, value);
-      if (key === 'restDays')  await syncRestDays(currentUserId, value);
-      if (key === 'plans')     await syncPlans(currentUserId, value);
-      if (key === 'schedule')  await syncSchedule(currentUserId, value);
-      if (key === 'profile')   await syncProfile(currentUserId, value);
-    } catch (e) {
-      console.error(`[Kinara] Sync error [${key}]:`, e);
-    }
-  }, 900);
+  // Per-key debounced save — each key gets its own timer so they don't cancel each other
+  const syncFns = {
+    sessions: (uid, v) => syncSessions(uid, v),
+    restDays: (uid, v) => syncRestDays(uid, v),
+    plans:    (uid, v) => syncPlans(uid, v),
+    schedule: (uid, v) => syncSchedule(uid, v),
+    profile:  (uid, v) => syncProfile(uid, v),
+  };
+  const pendingTimers = {};
+  const pendingCalls  = {};
 
-  // Sign-out — call this from a button in your Settings or BurgerDrawer
+  window.__kinaraSave = (key, value) => {
+    if (!currentUserId || signingOut) return;
+    // Store the latest value so flush can use it
+    pendingCalls[key] = { uid: currentUserId, value };
+    clearTimeout(pendingTimers[key]);
+    pendingTimers[key] = setTimeout(async () => {
+      const call = pendingCalls[key];
+      delete pendingCalls[key];
+      if (!call || signingOut) return;
+      try {
+        await syncFns[key](call.uid, call.value);
+      } catch (e) {
+        console.error(`[Kinara] Sync error [${key}]:`, e);
+      }
+    }, 900);
+  };
+
+  // Flush all pending debounced writes immediately (used before sign-out)
+  async function flushPendingSync() {
+    const keys = Object.keys(pendingCalls);
+    for (const key of keys) {
+      clearTimeout(pendingTimers[key]);
+      const call = pendingCalls[key];
+      delete pendingCalls[key];
+      if (call && syncFns[key]) {
+        try { await syncFns[key](call.uid, call.value); }
+        catch (e) { console.error(`[Kinara] Flush error [${key}]:`, e); }
+      }
+    }
+  }
+
+  // Sign-out — flush pending data to cloud, then sign out
   window.__kinaraSignOut = async () => {
-    signingOut = true;          // prevent sync from overwriting cloud data
+    signingOut = true;
+    await flushPendingSync();      // save any unsaved data before signing out
     currentUserId = null;
     await db.auth.signOut();
     location.reload();
@@ -228,34 +257,51 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 
   // ── Email/Password Auth ────────────────────────────────────────────────────
 
-  function showAuthError(msg) {
-    const el = document.getElementById('auth-error');
+  function showError(elId, msg) {
+    const el = document.getElementById(elId);
     if (el) { el.textContent = msg; el.style.display = msg ? 'block' : 'none'; }
+  }
+
+  function switchView(view) {
+    const signIn = document.getElementById('auth-signin-view');
+    const signUp = document.getElementById('auth-signup-view');
+    const loading = document.getElementById('auth-loading');
+    if (view === 'signup') {
+      if (signIn) signIn.style.display = 'none';
+      if (signUp) signUp.style.display = 'flex';
+      if (loading) loading.textContent = 'Create your Kinara account';
+    } else {
+      if (signUp) signUp.style.display = 'none';
+      if (signIn) signIn.style.display = 'flex';
+      if (loading) loading.textContent = 'Sign in to sync your workouts';
+    }
+    showError('auth-error', '');
+    showError('signup-error', '');
   }
 
   async function signInWithEmail() {
     const email = document.getElementById('auth-email')?.value?.trim();
     const pass  = document.getElementById('auth-password')?.value;
-    if (!email || !pass) { showAuthError('Please enter email and password.'); return; }
+    if (!email || !pass) { showError('auth-error', 'Please enter email and password.'); return; }
 
-    showAuthError('');
+    showError('auth-error', '');
     const btn = document.getElementById('email-signin-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
 
     const { error } = await db.auth.signInWithPassword({ email, password: pass });
     if (error) {
-      showAuthError(error.message);
+      showError('auth-error', error.message);
       if (btn) { btn.disabled = false; btn.textContent = 'Sign In'; }
     }
   }
 
   async function signUpWithEmail() {
-    const email = document.getElementById('auth-email')?.value?.trim();
-    const pass  = document.getElementById('auth-password')?.value;
-    if (!email || !pass) { showAuthError('Please enter email and password.'); return; }
-    if (pass.length < 6) { showAuthError('Password must be at least 6 characters.'); return; }
+    const email = document.getElementById('signup-email')?.value?.trim();
+    const pass  = document.getElementById('signup-password')?.value;
+    if (!email || !pass) { showError('signup-error', 'Please enter email and password.'); return; }
+    if (pass.length < 6) { showError('signup-error', 'Password must be at least 6 characters.'); return; }
 
-    showAuthError('');
+    showError('signup-error', '');
     const btn = document.getElementById('email-signup-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'Creating account…'; }
 
@@ -265,11 +311,12 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
       options: { emailRedirectTo: window.location.origin + window.location.pathname },
     });
     if (error) {
-      showAuthError(error.message);
-      if (btn) { btn.disabled = false; btn.textContent = 'Sign Up'; }
+      showError('signup-error', error.message);
+      if (btn) { btn.disabled = false; btn.textContent = 'Create Account'; }
     } else {
-      showAuthError('');
+      showError('signup-error', '');
       showLoading('Check your email to confirm your account, then sign in.');
+      switchView('signin');
     }
   }
 
@@ -283,10 +330,16 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
     document.getElementById('email-signup-btn')
       ?.addEventListener('click', signUpWithEmail);
 
-    // Allow Enter key to submit from password field
+    // View toggles
+    document.getElementById('show-signup-link')
+      ?.addEventListener('click', (e) => { e.preventDefault(); switchView('signup'); });
+    document.getElementById('show-signin-link')
+      ?.addEventListener('click', (e) => { e.preventDefault(); switchView('signin'); });
+
+    // Allow Enter key to submit
     document.getElementById('auth-password')
-      ?.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') signInWithEmail();
-      });
+      ?.addEventListener('keydown', (e) => { if (e.key === 'Enter') signInWithEmail(); });
+    document.getElementById('signup-password')
+      ?.addEventListener('keydown', (e) => { if (e.key === 'Enter') signUpWithEmail(); });
   });
 })();
