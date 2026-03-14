@@ -7,13 +7,13 @@
 const SUPA_URL = 'https://rivnhmnseyeqocpdatfj.supabase.co';      // e.g. https://xxxx.supabase.co
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJpdm5obW5zZXllcW9jcGRhdGZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNDQ3OTgsImV4cCI6MjA4ODkyMDc5OH0.lKEMitwo4_rq9fKKxwa0yy9VY_wxFpwy2i_pbj5T91M'; // starts with "eyJ..."
 
-// ── Assumed table schemas (adjust column names if yours differ) ───────────────
+// ── Actual table schemas ──────────────────────────────────────────────────────
 //
-//  profiles   → user_id (PK, uuid), name, bio, goal, photo, theme, lang
-//  plans      → id (text, PK), user_id (uuid), data (jsonb)
-//  sessions   → id (text, PK), user_id (uuid), date (text), data (jsonb)
-//  rest_days  → user_id (uuid), date (text)  [composite PK]
-//  schedule   → user_id (PK, uuid), data (jsonb)
+//  profiles   → id (PK, uuid = auth user id), name, bio, goal, photo
+//  plans      → id (bigint, auto PK), user_id (uuid), data (jsonb)
+//  sessions   → id (bigint, auto PK), user_id (uuid), logged_date (date), data (jsonb)
+//  rest_days  → id (bigint, auto PK), user_id (uuid), logged_date (date)
+//  schedule   → id (bigint, auto PK), user_id (uuid), data (jsonb)
 //
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -59,17 +59,15 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
     showLoading('Loading your data…');
     try {
       const [profileRes, plansRes, sessionsRes, restRes, schedRes] = await Promise.all([
-        db.from('profiles').select('*').eq('user_id', userId).maybeSingle(),
+        db.from('profiles').select('*').eq('id', userId).maybeSingle(),
         db.from('plans').select('*').eq('user_id', userId),
-        db.from('sessions').select('*').eq('user_id', userId).order('date', { ascending: false }),
-        db.from('rest_days').select('date').eq('user_id', userId),
+        db.from('sessions').select('*').eq('user_id', userId).order('logged_date', { ascending: false }),
+        db.from('rest_days').select('logged_date').eq('user_id', userId),
         db.from('schedule').select('*').eq('user_id', userId).maybeSingle(),
       ]);
 
       const p = profileRes.data;
       return {
-        theme:       p?.theme       || 'light',
-        lang:        p?.lang        || 'en',
         profileName: p?.name        || 'My Profile',
         profileBio:  p?.bio         || '',
         profileGoal: p?.goal        || 'general',
@@ -77,7 +75,7 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
         // null means "use app defaults" — the React useState initializer handles this
         plans:    plansRes.data?.length    ? plansRes.data.map(r => r.data)    : null,
         sessions: sessionsRes.data?.length ? sessionsRes.data.map(r => r.data) : [],
-        restDaysLog: restRes.data?.map(r => r.date) || [],
+        restDaysLog: restRes.data?.map(r => r.logged_date) || [],
         schedule: schedRes.data?.data || null,
       };
     } catch (e) {
@@ -89,90 +87,113 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
   // ── Data Sync Helpers ─────────────────────────────────────────────────────────
 
   async function syncSessions(userId, sessions) {
-    if (!sessions.length) {
-      await db.from('sessions').delete().eq('user_id', userId);
-      return;
+    // Replace strategy: delete all user sessions then re-insert
+    // (DB id is auto bigint so we can't upsert by app-level id)
+    await db.from('sessions').delete().eq('user_id', userId);
+    if (sessions.length) {
+      const rows = sessions.map(s => ({
+        user_id: userId,
+        logged_date: s.date,
+        data: s,
+      }));
+      const { error } = await db.from('sessions').insert(rows);
+      if (error) throw error;
     }
-    const rows = sessions.map(s => ({
-      id: String(s.id),
-      user_id: userId,
-      date: s.date,
-      data: s,
-    }));
-    const { error } = await db.from('sessions').upsert(rows, { onConflict: 'id' });
-    if (error) throw error;
-
-    // Clean up sessions that were deleted in the app
-    const liveIds = rows.map(r => r.id);
-    await db.from('sessions').delete().eq('user_id', userId).not('id', 'in', `(${liveIds.map(i => `'${i}'`).join(',')})`);
   }
 
   async function syncRestDays(userId, restDaysLog) {
-    // Fetch what's currently in DB
-    const { data: existing } = await db.from('rest_days').select('date').eq('user_id', userId);
-    const existingDates = new Set(existing?.map(r => r.date) || []);
+    // Diff-based sync using the correct column name: logged_date
+    const { data: existing } = await db.from('rest_days').select('logged_date').eq('user_id', userId);
+    const existingDates = new Set(existing?.map(r => r.logged_date) || []);
     const newDates      = new Set(restDaysLog);
 
     const toInsert = restDaysLog.filter(d => !existingDates.has(d));
     const toDelete  = [...existingDates].filter(d => !newDates.has(d));
 
     if (toInsert.length)
-      await db.from('rest_days').insert(toInsert.map(date => ({ user_id: userId, date })));
+      await db.from('rest_days').insert(toInsert.map(logged_date => ({ user_id: userId, logged_date })));
     if (toDelete.length)
-      await db.from('rest_days').delete().eq('user_id', userId).in('date', toDelete);
+      await db.from('rest_days').delete().eq('user_id', userId).in('logged_date', toDelete);
   }
 
   async function syncPlans(userId, plans) {
-    if (!plans.length) return;
-    const rows = plans.map(p => ({ id: String(p.id), user_id: userId, data: p }));
-    await db.from('plans').upsert(rows, { onConflict: 'id' });
-
-    // Remove deleted plans
-    const liveIds = rows.map(r => r.id);
-    await db.from('plans').delete().eq('user_id', userId).not('id', 'in', `(${liveIds.map(i => `'${i}'`).join(',')})`);
+    // Replace strategy: delete all user plans then re-insert
+    // (DB id is auto bigint so we can't upsert by app-level id)
+    await db.from('plans').delete().eq('user_id', userId);
+    if (plans.length) {
+      const rows = plans.map(p => ({ user_id: userId, data: p }));
+      await db.from('plans').insert(rows);
+    }
   }
 
   async function syncSchedule(userId, schedule) {
-    await db.from('schedule').upsert(
-      { user_id: userId, data: schedule },
-      { onConflict: 'user_id' }
-    );
+    // Delete then insert (no unique constraint on user_id, id is auto bigint)
+    await db.from('schedule').delete().eq('user_id', userId);
+    await db.from('schedule').insert({ user_id: userId, data: schedule });
   }
 
   async function syncProfile(userId, profile) {
+    // profiles.id IS the auth user uuid (not a separate user_id column)
     await db.from('profiles').upsert(
       {
-        user_id: userId,
+        id:    userId,
         name:  profile.profileName,
         bio:   profile.profileBio,
         goal:  profile.profileGoal,
         photo: profile.profilePhoto,
-        theme: profile.theme,
-        lang:  profile.lang,
       },
-      { onConflict: 'user_id' }
+      { onConflict: 'id' }
     );
   }
 
   // ── Global API for React app ──────────────────────────────────────────────────
 
-  // Debounced save — called from useEffect hooks in App()
-  window.__kinaraSave = debounce(async (key, value) => {
-    if (!currentUserId || signingOut) return;
-    try {
-      if (key === 'sessions')  await syncSessions(currentUserId, value);
-      if (key === 'restDays')  await syncRestDays(currentUserId, value);
-      if (key === 'plans')     await syncPlans(currentUserId, value);
-      if (key === 'schedule')  await syncSchedule(currentUserId, value);
-      if (key === 'profile')   await syncProfile(currentUserId, value);
-    } catch (e) {
-      console.error(`[Kinara] Sync error [${key}]:`, e);
-    }
-  }, 900);
+  // Per-key debounced save — each key gets its own timer so they don't cancel each other
+  const syncFns = {
+    sessions: (uid, v) => syncSessions(uid, v),
+    restDays: (uid, v) => syncRestDays(uid, v),
+    plans:    (uid, v) => syncPlans(uid, v),
+    schedule: (uid, v) => syncSchedule(uid, v),
+    profile:  (uid, v) => syncProfile(uid, v),
+  };
+  const pendingTimers = {};
+  const pendingCalls  = {};
 
-  // Sign-out — call this from a button in your Settings or BurgerDrawer
+  window.__kinaraSave = (key, value) => {
+    if (!currentUserId || signingOut) return;
+    // Store the latest value so flush can use it
+    pendingCalls[key] = { uid: currentUserId, value };
+    clearTimeout(pendingTimers[key]);
+    pendingTimers[key] = setTimeout(async () => {
+      const call = pendingCalls[key];
+      delete pendingCalls[key];
+      if (!call || signingOut) return;
+      try {
+        await syncFns[key](call.uid, call.value);
+      } catch (e) {
+        console.error(`[Kinara] Sync error [${key}]:`, e);
+      }
+    }, 900);
+  };
+
+  // Flush all pending debounced writes immediately (used before sign-out)
+  async function flushPendingSync() {
+    const keys = Object.keys(pendingCalls);
+    for (const key of keys) {
+      clearTimeout(pendingTimers[key]);
+      const call = pendingCalls[key];
+      delete pendingCalls[key];
+      if (call && syncFns[key]) {
+        try { await syncFns[key](call.uid, call.value); }
+        catch (e) { console.error(`[Kinara] Flush error [${key}]:`, e); }
+      }
+    }
+  }
+
+  // Sign-out — flush pending data to cloud, then sign out
   window.__kinaraSignOut = async () => {
-    signingOut = true;          // prevent sync from overwriting cloud data
+    signingOut = true;
+    await flushPendingSync();      // save any unsaved data before signing out
     currentUserId = null;
     await db.auth.signOut();
     location.reload();
@@ -228,34 +249,51 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 
   // ── Email/Password Auth ────────────────────────────────────────────────────
 
-  function showAuthError(msg) {
-    const el = document.getElementById('auth-error');
+  function showError(elId, msg) {
+    const el = document.getElementById(elId);
     if (el) { el.textContent = msg; el.style.display = msg ? 'block' : 'none'; }
+  }
+
+  function switchView(view) {
+    const signIn = document.getElementById('auth-signin-view');
+    const signUp = document.getElementById('auth-signup-view');
+    const loading = document.getElementById('auth-loading');
+    if (view === 'signup') {
+      if (signIn) signIn.style.display = 'none';
+      if (signUp) signUp.style.display = 'flex';
+      if (loading) loading.textContent = 'Create your Kinara account';
+    } else {
+      if (signUp) signUp.style.display = 'none';
+      if (signIn) signIn.style.display = 'flex';
+      if (loading) loading.textContent = 'Sign in to sync your workouts';
+    }
+    showError('auth-error', '');
+    showError('signup-error', '');
   }
 
   async function signInWithEmail() {
     const email = document.getElementById('auth-email')?.value?.trim();
     const pass  = document.getElementById('auth-password')?.value;
-    if (!email || !pass) { showAuthError('Please enter email and password.'); return; }
+    if (!email || !pass) { showError('auth-error', 'Please enter email and password.'); return; }
 
-    showAuthError('');
+    showError('auth-error', '');
     const btn = document.getElementById('email-signin-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
 
     const { error } = await db.auth.signInWithPassword({ email, password: pass });
     if (error) {
-      showAuthError(error.message);
+      showError('auth-error', error.message);
       if (btn) { btn.disabled = false; btn.textContent = 'Sign In'; }
     }
   }
 
   async function signUpWithEmail() {
-    const email = document.getElementById('auth-email')?.value?.trim();
-    const pass  = document.getElementById('auth-password')?.value;
-    if (!email || !pass) { showAuthError('Please enter email and password.'); return; }
-    if (pass.length < 6) { showAuthError('Password must be at least 6 characters.'); return; }
+    const email = document.getElementById('signup-email')?.value?.trim();
+    const pass  = document.getElementById('signup-password')?.value;
+    if (!email || !pass) { showError('signup-error', 'Please enter email and password.'); return; }
+    if (pass.length < 6) { showError('signup-error', 'Password must be at least 6 characters.'); return; }
 
-    showAuthError('');
+    showError('signup-error', '');
     const btn = document.getElementById('email-signup-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'Creating account…'; }
 
@@ -265,11 +303,12 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
       options: { emailRedirectTo: window.location.origin + window.location.pathname },
     });
     if (error) {
-      showAuthError(error.message);
-      if (btn) { btn.disabled = false; btn.textContent = 'Sign Up'; }
+      showError('signup-error', error.message);
+      if (btn) { btn.disabled = false; btn.textContent = 'Create Account'; }
     } else {
-      showAuthError('');
+      showError('signup-error', '');
       showLoading('Check your email to confirm your account, then sign in.');
+      switchView('signin');
     }
   }
 
@@ -283,10 +322,16 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
     document.getElementById('email-signup-btn')
       ?.addEventListener('click', signUpWithEmail);
 
-    // Allow Enter key to submit from password field
+    // View toggles
+    document.getElementById('show-signup-link')
+      ?.addEventListener('click', (e) => { e.preventDefault(); switchView('signup'); });
+    document.getElementById('show-signin-link')
+      ?.addEventListener('click', (e) => { e.preventDefault(); switchView('signin'); });
+
+    // Allow Enter key to submit
     document.getElementById('auth-password')
-      ?.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') signInWithEmail();
-      });
+      ?.addEventListener('keydown', (e) => { if (e.key === 'Enter') signInWithEmail(); });
+    document.getElementById('signup-password')
+      ?.addEventListener('keydown', (e) => { if (e.key === 'Enter') signUpWithEmail(); });
   });
 })();
