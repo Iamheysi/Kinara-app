@@ -198,16 +198,26 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 
   // ── Data Loading ─────────────────────────────────────────────────────────────
 
+  function withTimeout(promise, ms) {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
+    ]);
+  }
+
   async function loadUserData(userId) {
-    showLoading('Loading your data…');
+    switchView('loading');
     try {
-      const [profileRes, plansRes, sessionsRes, restRes, schedRes] = await Promise.all([
-        db.from('profiles').select('*').eq('id', userId).maybeSingle(),
-        db.from('plans').select('*').eq('user_id', userId),
-        db.from('sessions').select('*').eq('user_id', userId).order('logged_date', { ascending: false }),
-        db.from('rest_days').select('logged_date').eq('user_id', userId),
-        db.from('schedule').select('*').eq('user_id', userId).maybeSingle(),
-      ]);
+      const [profileRes, plansRes, sessionsRes, restRes, schedRes] = await withTimeout(
+        Promise.all([
+          db.from('profiles').select('*').eq('id', userId).maybeSingle(),
+          db.from('plans').select('*').eq('user_id', userId),
+          db.from('sessions').select('*').eq('user_id', userId).order('logged_date', { ascending: false }),
+          db.from('rest_days').select('logged_date').eq('user_id', userId),
+          db.from('schedule').select('*').eq('user_id', userId).maybeSingle(),
+        ]),
+        12000 // 12-second timeout
+      );
 
       const p = profileRes.data;
       return {
@@ -366,6 +376,15 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
       currentUserId = session.user.id;
       window.__kinaraUserEmail = session.user.email || null;
 
+      // If we're awaiting email confirmation and the user isn't confirmed yet,
+      // don't mount the app — stay on the OTP screen.
+      if (awaitingEmailConfirm && !session.user.email_confirmed_at) {
+        return;
+      }
+
+      // Email is now confirmed (or was never required) — proceed
+      awaitingEmailConfirm = false;
+
       if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
         const data = await loadUserData(session.user.id);
         mountReact(data);
@@ -399,29 +418,36 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
   }
 
   let lastSignupEmail = '';
+  let awaitingEmailConfirm = false;
 
   function switchView(view) {
-    const signIn  = document.getElementById('auth-signin-view');
-    const signUp  = document.getElementById('auth-signup-view');
-    const confirm = document.getElementById('auth-confirm-view');
-    const loading = document.getElementById('auth-loading');
-    if (signIn)  signIn.style.display  = 'none';
-    if (signUp)  signUp.style.display  = 'none';
-    if (confirm) confirm.style.display = 'none';
+    const signIn    = document.getElementById('auth-signin-view');
+    const signUp    = document.getElementById('auth-signup-view');
+    const confirm   = document.getElementById('auth-confirm-view');
+    const loadingEl = document.getElementById('auth-loading-view');
+    const subtitle  = document.getElementById('auth-loading');
+
+    if (signIn)    signIn.style.display    = 'none';
+    if (signUp)    signUp.style.display    = 'none';
+    if (confirm)   confirm.style.display   = 'none';
+    if (loadingEl) loadingEl.style.display = 'none';
 
     if (view === 'signup') {
       if (signUp) signUp.style.display = 'flex';
-      if (loading) loading.textContent = t18n('subtitleSignup');
+      if (subtitle) subtitle.textContent = t18n('subtitleSignup');
     } else if (view === 'confirm') {
       if (confirm) confirm.style.display = 'flex';
-      if (loading) loading.textContent = t18n('subtitleConfirm');
+      if (subtitle) subtitle.textContent = t18n('subtitleConfirm');
       clearOtpInputs();
       showError('otp-error', '');
-      // Auto-focus first OTP digit after a brief delay
       setTimeout(() => { const first = document.querySelector('.otp-digit'); if (first) first.focus(); }, 100);
+    } else if (view === 'loading') {
+      if (loadingEl) loadingEl.style.display = 'flex';
+      if (subtitle) subtitle.textContent = t18n('loading');
     } else {
       if (signIn) signIn.style.display = 'flex';
-      if (loading) loading.textContent = t18n('subtitle');
+      if (subtitle) subtitle.textContent = t18n('subtitle');
+      awaitingEmailConfirm = false;
     }
     showError('auth-error', '');
     showError('signup-error', '');
@@ -440,6 +466,9 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
     if (error) {
       showError('auth-error', error.message);
       if (btn) { btn.disabled = false; btn.textContent = t18n('signInBtn'); }
+    } else {
+      // Sign-in succeeded — switch to loading view while data loads
+      switchView('loading');
     }
   }
 
@@ -456,7 +485,7 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
     const btn = document.getElementById('email-signup-btn');
     if (btn) { btn.disabled = true; btn.textContent = t18n('creatingAccount'); }
 
-    const { error } = await db.auth.signUp({
+    const { data, error } = await db.auth.signUp({
       email,
       password: pass,
       options: { emailRedirectTo: window.location.origin + window.location.pathname },
@@ -464,8 +493,13 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
     if (error) {
       showError('signup-error', error.message);
       if (btn) { btn.disabled = false; btn.textContent = t18n('createAccountBtn'); }
+    } else if (data?.session) {
+      // Auto-confirmed — Supabase returned a session. Let onAuthStateChange handle it.
+      // (loadUserData + mountReact will be triggered by the SIGNED_IN event)
     } else {
+      // Email confirmation required — show the OTP / waiting screen
       lastSignupEmail = email;
+      awaitingEmailConfirm = true;
       const display = document.getElementById('confirm-email-display');
       if (display) display.textContent = email;
       switchView('confirm');
