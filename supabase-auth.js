@@ -35,8 +35,129 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
     return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
   }
 
+  // ── Auth Screen i18n ─────────────────────────────────────────────────────────
+
+  const AUTH_I18N = {
+    en: {
+      subtitle: 'Sign in to sync your workouts',
+      subtitleSignup: 'Create your Kinara account',
+      subtitleConfirm: 'Almost there!',
+      welcomeBack: 'Welcome Back',
+      emailPlaceholder: 'Email address',
+      passwordPlaceholder: 'Password',
+      signInBtn: 'Sign In',
+      noAccount: "Don't have an account?",
+      signUpLink: 'Sign Up',
+      or: 'or',
+      googleBtn: 'Continue with Google',
+      createAccount: 'Create Your Account',
+      confirmEmailPlaceholder: 'Confirm email address',
+      passwordMinPlaceholder: 'Password (min. 6 characters)',
+      createAccountBtn: 'Create Account',
+      hasAccount: 'Already have an account?',
+      signInLink: 'Sign In',
+      checkEmail: 'Check Your Email',
+      confirmSent: "We've sent a confirmation link to",
+      confirmInstructions: "Click the link in your email to activate your account. Once confirmed, you'll be taken directly into Kinara.",
+      didntReceive: "Didn't receive it? Check your spam folder or",
+      resendEmail: 'resend email',
+      backToSignIn: 'Back to Sign In',
+      tryBtn: 'Explore Kinara',
+      trySubtitle: 'Take a look around — no account needed',
+      tryCaveat: 'Your data will not be saved. Create an account to keep your progress.',
+      emailMismatch: 'Email addresses do not match.',
+      fillAll: 'Please fill in all fields.',
+      passMin: 'Password must be at least 6 characters.',
+      enterBoth: 'Please enter email and password.',
+      creatingAccount: 'Creating account…',
+      signingIn: 'Signing in…',
+      redirecting: 'Redirecting…',
+      resending: 'Sending…',
+      resent: 'Email sent!',
+      resendFail: 'Resend failed — try again',
+      loading: 'Loading your data…',
+    },
+    ru: {
+      subtitle: 'Войдите, чтобы сохранять тренировки',
+      subtitleSignup: 'Создайте аккаунт Kinara',
+      subtitleConfirm: 'Почти готово!',
+      welcomeBack: 'С возвращением',
+      emailPlaceholder: 'Электронная почта',
+      passwordPlaceholder: 'Пароль',
+      signInBtn: 'Войти',
+      noAccount: 'Нет аккаунта?',
+      signUpLink: 'Регистрация',
+      or: 'или',
+      googleBtn: 'Продолжить с Google',
+      createAccount: 'Создать аккаунт',
+      confirmEmailPlaceholder: 'Подтвердите адрес почты',
+      passwordMinPlaceholder: 'Пароль (мин. 6 символов)',
+      createAccountBtn: 'Создать аккаунт',
+      hasAccount: 'Уже есть аккаунт?',
+      signInLink: 'Войти',
+      checkEmail: 'Проверьте почту',
+      confirmSent: 'Мы отправили ссылку на',
+      confirmInstructions: 'Перейдите по ссылке в письме, чтобы активировать аккаунт. После подтверждения вы попадёте прямо в Kinara.',
+      didntReceive: 'Не получили? Проверьте спам или',
+      resendEmail: 'отправить повторно',
+      backToSignIn: 'Назад ко входу',
+      tryBtn: 'Попробовать Kinara',
+      trySubtitle: 'Посмотрите приложение — без регистрации',
+      tryCaveat: 'Данные не сохранятся. Создайте аккаунт, чтобы не потерять прогресс.',
+      emailMismatch: 'Адреса почты не совпадают.',
+      fillAll: 'Пожалуйста, заполните все поля.',
+      passMin: 'Пароль должен содержать минимум 6 символов.',
+      enterBoth: 'Введите почту и пароль.',
+      creatingAccount: 'Создаём аккаунт…',
+      signingIn: 'Входим…',
+      redirecting: 'Перенаправляем…',
+      resending: 'Отправляем…',
+      resent: 'Письмо отправлено!',
+      resendFail: 'Не удалось — попробуйте снова',
+      loading: 'Загружаем данные…',
+    },
+  };
+
+  let authLang = 'en';
+
+  function applyAuthLang(lang) {
+    authLang = lang;
+    const strings = AUTH_I18N[lang] || AUTH_I18N.en;
+
+    // Update text content
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (strings[key]) el.textContent = strings[key];
+    });
+
+    // Update placeholders
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+      const key = el.getAttribute('data-i18n-placeholder');
+      if (strings[key]) el.placeholder = strings[key];
+    });
+
+    // Style language toggle buttons
+    const enBtn = document.getElementById('auth-lang-en');
+    const ruBtn = document.getElementById('auth-lang-ru');
+    if (enBtn && ruBtn) {
+      if (lang === 'en') {
+        enBtn.style.background = '#2B55CC'; enBtn.style.color = '#fff'; enBtn.style.borderColor = '#2B55CC';
+        ruBtn.style.background = 'transparent'; ruBtn.style.color = '#5A6A84'; ruBtn.style.borderColor = '#C4CFEA';
+      } else {
+        ruBtn.style.background = '#2B55CC'; ruBtn.style.color = '#fff'; ruBtn.style.borderColor = '#2B55CC';
+        enBtn.style.background = 'transparent'; enBtn.style.color = '#5A6A84'; enBtn.style.borderColor = '#C4CFEA';
+      }
+    }
+  }
+
+  // Expose to inline onclick handlers
+  window.setAuthLang = applyAuthLang;
+
+  function t18n(key) {
+    return (AUTH_I18N[authLang] || AUTH_I18N.en)[key] || key;
+  }
+
   // ── Auth Gate UI ─────────────────────────────────────────────────────────────
-  // The #auth-gate div is added inline to index.html (see JSX-patches file).
 
   function showAuthGate() {
     const el = document.getElementById('auth-gate');
@@ -50,7 +171,19 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 
   function showLoading(msg) {
     const el = document.getElementById('auth-loading');
-    if (el) el.textContent = msg || 'Loading…';
+    if (el) el.textContent = msg || t18n('loading');
+  }
+
+  // ── Guest / Trial mode ──────────────────────────────────────────────────────
+
+  window.__kinaraGuest = false;
+
+  function launchGuestMode() {
+    window.__kinaraGuest = true;
+    window.__kinaraUserEmail = null;
+    // Set the app language to match the auth screen choice
+    window.__kinaraGuestLang = authLang;
+    mountReact({});
   }
 
   // ── Data Loading ─────────────────────────────────────────────────────────────
@@ -160,7 +293,7 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
   const pendingCalls  = {};
 
   window.__kinaraSave = (key, value) => {
-    if (!currentUserId || signingOut) return;
+    if (window.__kinaraGuest || !currentUserId || signingOut) return;
     // Store the latest value so flush can use it
     pendingCalls[key] = { uid: currentUserId, value };
     clearTimeout(pendingTimers[key]);
@@ -192,6 +325,7 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 
   // Sign-out — flush pending data to cloud, then sign out
   window.__kinaraSignOut = async () => {
+    if (window.__kinaraGuest) { location.reload(); return; }
     signingOut = true;
     await flushPendingSync();      // save any unsaved data before signing out
     currentUserId = null;
@@ -237,7 +371,7 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 
   async function signInWithGoogle() {
     const btn = document.getElementById('google-signin-btn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Redirecting…'; }
+    if (btn) { btn.disabled = true; btn.textContent = t18n('redirecting'); }
 
     await db.auth.signInWithOAuth({
       provider: 'google',
@@ -267,13 +401,13 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 
     if (view === 'signup') {
       if (signUp) signUp.style.display = 'flex';
-      if (loading) loading.textContent = 'Create your Kinara account';
+      if (loading) loading.textContent = t18n('subtitleSignup');
     } else if (view === 'confirm') {
       if (confirm) confirm.style.display = 'flex';
-      if (loading) loading.textContent = 'Almost there!';
+      if (loading) loading.textContent = t18n('subtitleConfirm');
     } else {
       if (signIn) signIn.style.display = 'flex';
-      if (loading) loading.textContent = 'Sign in to sync your workouts';
+      if (loading) loading.textContent = t18n('subtitle');
     }
     showError('auth-error', '');
     showError('signup-error', '');
@@ -282,16 +416,16 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
   async function signInWithEmail() {
     const email = document.getElementById('auth-email')?.value?.trim();
     const pass  = document.getElementById('auth-password')?.value;
-    if (!email || !pass) { showError('auth-error', 'Please enter email and password.'); return; }
+    if (!email || !pass) { showError('auth-error', t18n('enterBoth')); return; }
 
     showError('auth-error', '');
     const btn = document.getElementById('email-signin-btn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
+    if (btn) { btn.disabled = true; btn.textContent = t18n('signingIn'); }
 
     const { error } = await db.auth.signInWithPassword({ email, password: pass });
     if (error) {
       showError('auth-error', error.message);
-      if (btn) { btn.disabled = false; btn.textContent = 'Sign In'; }
+      if (btn) { btn.disabled = false; btn.textContent = t18n('signInBtn'); }
     }
   }
 
@@ -300,13 +434,13 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
     const confirm = document.getElementById('signup-email-confirm')?.value?.trim();
     const pass    = document.getElementById('signup-password')?.value;
 
-    if (!email || !confirm || !pass) { showError('signup-error', 'Please fill in all fields.'); return; }
-    if (email.toLowerCase() !== confirm.toLowerCase()) { showError('signup-error', 'Email addresses do not match.'); return; }
-    if (pass.length < 6) { showError('signup-error', 'Password must be at least 6 characters.'); return; }
+    if (!email || !confirm || !pass) { showError('signup-error', t18n('fillAll')); return; }
+    if (email.toLowerCase() !== confirm.toLowerCase()) { showError('signup-error', t18n('emailMismatch')); return; }
+    if (pass.length < 6) { showError('signup-error', t18n('passMin')); return; }
 
     showError('signup-error', '');
     const btn = document.getElementById('email-signup-btn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Creating account…'; }
+    if (btn) { btn.disabled = true; btn.textContent = t18n('creatingAccount'); }
 
     const { error } = await db.auth.signUp({
       email,
@@ -315,7 +449,7 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
     });
     if (error) {
       showError('signup-error', error.message);
-      if (btn) { btn.disabled = false; btn.textContent = 'Create Account'; }
+      if (btn) { btn.disabled = false; btn.textContent = t18n('createAccountBtn'); }
     } else {
       lastSignupEmail = email;
       const display = document.getElementById('confirm-email-display');
@@ -327,10 +461,10 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
   async function resendConfirmation() {
     if (!lastSignupEmail) return;
     const link = document.getElementById('resend-confirm-link');
-    if (link) link.textContent = 'Sending…';
+    if (link) link.textContent = t18n('resending');
     const { error } = await db.auth.resend({ type: 'signup', email: lastSignupEmail });
-    if (link) link.textContent = error ? 'Resend failed — try again' : 'Email sent!';
-    if (!error) setTimeout(() => { if (link) link.textContent = 'resend email'; }, 4000);
+    if (link) link.textContent = error ? t18n('resendFail') : t18n('resent');
+    if (!error) setTimeout(() => { if (link) link.textContent = t18n('resendEmail'); }, 4000);
   }
 
   // ── Bind buttons on DOMContentLoaded ───────────────────────────────────────
@@ -360,5 +494,9 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
       ?.addEventListener('keydown', (e) => { if (e.key === 'Enter') signUpWithEmail(); });
     document.getElementById('signup-email-confirm')
       ?.addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('signup-password')?.focus(); });
+
+    // Guest / trial mode
+    document.getElementById('try-guest-btn')
+      ?.addEventListener('click', launchGuestMode);
   });
 })();
