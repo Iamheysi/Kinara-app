@@ -1,9 +1,7 @@
-# Supabase / app configuration (contains API keys)
-config.js
-
-# Environment files
+# Environment files (contain API keys — never commit)
 .env
 .env.*
+!.env.example
 
 # OS files
 .DS_Store
@@ -15,5 +13,8 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Node (for future use)
+# Node / Vite
 node_modules/
+dist/
+dist-ssr/
+*.local

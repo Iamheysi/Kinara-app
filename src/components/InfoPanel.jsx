@@ -1,0 +1,1 @@
+export function InfoPanel({text,c}){return(<div style={{background:c.primaryDim,border:`1px solid ${c.primary}33`,borderRadius:10,padding:"10px 13px",marginTop:8,animation:"fadeUp 0.2s ease"}}><p style={{fontSize:11.5,color:c.textSecondary,lineHeight:1.7}}>{text}</p></div>);}
