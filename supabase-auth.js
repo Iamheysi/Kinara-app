@@ -1,11 +1,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // supabase-auth.js  —  Kinara / Workout Hub  (add BEFORE React/Babel scripts)
 // ─────────────────────────────────────────────────────────────────────────────
-// SETUP: Replace the two placeholders below with the Supabase project values.
+// SETUP: Create a config.js file (see config.example.js) that defines:
+//   const SUPA_URL = 'https://YOUR_PROJECT_REF.supabase.co';
+//   const SUPA_KEY = 'YOUR_ANON_KEY_HERE';
+// config.js must be loaded BEFORE this script.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SUPA_URL = 'https://rivnhmnseyeqocpdatfj.supabase.co';      // e.g. https://xxxx.supabase.co
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJpdm5obW5zZXllcW9jcGRhdGZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNDQ3OTgsImV4cCI6MjA4ODkyMDc5OH0.lKEMitwo4_rq9fKKxwa0yy9VY_wxFpwy2i_pbj5T91M'; // starts with "eyJ..."
+if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
+  console.error('[Kinara] config.js not loaded. Copy config.example.js → config.js and add your Supabase credentials.');
+}
 
 // ── Actual table schemas ──────────────────────────────────────────────────────
 //
