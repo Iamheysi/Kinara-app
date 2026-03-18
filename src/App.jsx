@@ -50,6 +50,21 @@ function App(){
       if(saved.profilePhoto!==undefined)setProfilePhoto(saved.profilePhoto);
     }catch(e){}
     setDataLoaded(true);
+
+    // Background refresh: supabase-auth.js calls this when fresh cloud data
+    // arrives after the fast-path mount (returning-user reload).
+    window.__kinaraRefresh=(fresh)=>{
+      if(!fresh||!Object.keys(fresh).length)return;
+      if(Array.isArray(fresh.sessions))setSessions(fresh.sessions);
+      if(Array.isArray(fresh.restDaysLog))setRestDaysLog(fresh.restDaysLog);
+      if(Array.isArray(fresh.plans))setPlans(fresh.plans);
+      if(fresh.schedule)setSchedule(fresh.schedule);
+      if(fresh.profileName)setProfileName(fresh.profileName);
+      if(fresh.profileBio!==undefined)setProfileBio(fresh.profileBio);
+      if(fresh.profileGoal)setProfileGoal(fresh.profileGoal);
+      if(fresh.profilePhoto!==undefined)setProfilePhoto(fresh.profilePhoto);
+    };
+    return ()=>{ delete window.__kinaraRefresh; };
   },[]);
 
   // ── Save to localStorage on every relevant change ─────────────────────
