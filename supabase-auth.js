@@ -46,7 +46,9 @@
       didntReceive: "Didn't receive it? Check your spam folder or",
       resendEmail: 'resend email',
       backToSignIn: 'Back to Sign In',
-
+      tryBtn: 'Explore Kinara',
+      trySubtitle: 'Take a look around — no account needed',
+      tryCaveat: 'Your data will not be saved. Create an account to keep your progress.',
       emailMismatch: 'Email addresses do not match.',
       fillAll: 'Please fill in all fields.',
       passMin: 'Password must be at least 6 characters.',
@@ -87,7 +89,9 @@
       didntReceive: 'Не получили? Проверьте спам или',
       resendEmail: 'отправить повторно',
       backToSignIn: 'Назад ко входу',
-
+      tryBtn: 'Попробовать Kinara',
+      trySubtitle: 'Посмотрите приложение — без регистрации',
+      tryCaveat: 'Данные не сохранятся. Создайте аккаунт, чтобы не потерять прогресс.',
       emailMismatch: 'Адреса почты не совпадают.',
       fillAll: 'Пожалуйста, заполните все поля.',
       passMin: 'Пароль должен содержать минимум 6 символов.',
@@ -207,7 +211,16 @@
     if (el) el.style.display = 'none';
   }
 
+  // ── Guest / Trial mode ──────────────────────────────────────────────────────
+
   window.__kinaraGuest = false;
+
+  function launchGuestMode() {
+    window.__kinaraGuest = true;
+    window.__kinaraUserEmail = null;
+    window.__kinaraGuestLang = authLang;
+    mountReact({});
+  }
 
   // ── Data Loading ─────────────────────────────────────────────────────────────
 
@@ -616,5 +629,7 @@
     document.getElementById('signup-email-confirm')
       ?.addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('signup-password')?.focus(); });
 
+    document.getElementById('try-guest-btn')
+      ?.addEventListener('click', launchGuestMode);
   });
 })();
