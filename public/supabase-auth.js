@@ -347,12 +347,13 @@
   }
 
   window.__kinaraSignOut = async () => {
-    if (window.__kinaraGuest) { location.reload(); return; }
+    if (window.__kinaraGuest) { localStorage.removeItem('kinara_v7'); location.reload(); return; }
     signingOut = true;
     appMounted = false;
     await flushPendingSync();
     currentUserId = null;
     await db.auth.signOut();
+    localStorage.removeItem('kinara_v7');
     location.reload();
   };
 
