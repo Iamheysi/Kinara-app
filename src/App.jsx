@@ -1,0 +1,137 @@
+import { useState, useEffect, useRef } from 'react';
+import { DARK, LIGHT, TR, DEFAULT_PLANS, DEFAULT_SCHEDULE } from './constants.js';
+import { localDateStr, calcStreak, playBeeps } from './utils.js';
+import { LogoMark } from './components/LogoMark.jsx';
+import { Toast } from './components/Toast.jsx';
+import { Sidebar } from './components/Sidebar.jsx';
+import { Header } from './components/Header.jsx';
+import { BottomNav } from './components/BottomNav.jsx';
+import { BurgerDrawer } from './components/BurgerDrawer.jsx';
+import { SettingsModal } from './components/SettingsModal.jsx';
+import { PRModal } from './components/PRModal.jsx';
+import { HomeTab } from './components/HomeTab.jsx';
+import { PlansTab } from './components/PlansTab.jsx';
+import { LogTab } from './components/LogTab.jsx';
+import { RestTab } from './components/RestTab.jsx';
+import { CalendarTab } from './components/CalendarTab.jsx';
+import { ProgressTab } from './components/ProgressTab.jsx';
+import { ProfileTab } from './components/ProfileTab.jsx';
+
+const FONTS=`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap');`;
+
+function App(){
+  const [theme,setTheme]=useState("light");const [lang,setLang]=useState(window.__kinaraGuestLang||"en");
+  const [profileName,setProfileName]=useState("My Profile");const [profileBio,setProfileBio]=useState("");const [profileGoal,setProfileGoal]=useState("general");const [profilePhoto,setProfilePhoto]=useState(null);
+  const [tab,setTab]=useState("home");const [menuOpen,setMenuOpen]=useState(false);const [settingsOpen,setSettingsOpen]=useState(false);
+  const [plans,setPlans]=useState(DEFAULT_PLANS);const [schedule,setSchedule]=useState(DEFAULT_SCHEDULE);
+  const [sessions,setSessions]=useState([]);const [restDaysLog,setRestDaysLog]=useState([]);
+  const [activeWorkout,setActiveWorkout]=useState(null);const [pendingPlanId,setPendingPlanId]=useState(null);
+  const [bannerDismissed,setBannerDismissed]=useState(false);
+  const [selectedMonth,setSelectedMonth]=useState(new Date());const [selectedDay,setSelectedDay]=useState(null);
+  const [showPR,setShowPR]=useState(null);const [toast,setToast]=useState(null);
+  const [dataLoaded,setDataLoaded]=useState(false);
+  const fileInputRef=useRef(null);const photoInputRef=useRef(null);const timerRef=useRef(null);
+
+  // ── Load data: prefer Supabase cloud data, fall back to localStorage ──
+  useEffect(()=>{
+    const cloud=window.__kinaraData||{};
+    const hasCloud=Object.keys(cloud).length>0;
+    try{
+      const saved=hasCloud?cloud:JSON.parse(localStorage.getItem('kinara_v7')||'{}');
+      if(Array.isArray(saved.sessions))setSessions(saved.sessions);
+      if(Array.isArray(saved.restDaysLog))setRestDaysLog(saved.restDaysLog);
+      if(Array.isArray(saved.plans))setPlans(saved.plans);
+      if(saved.schedule)setSchedule(saved.schedule);
+      if(saved.theme)setTheme(saved.theme);
+      if(saved.lang)setLang(saved.lang);
+      if(saved.profileName)setProfileName(saved.profileName);
+      if(saved.profileBio!==undefined)setProfileBio(saved.profileBio);
+      if(saved.profileGoal)setProfileGoal(saved.profileGoal);
+      if(saved.profilePhoto!==undefined)setProfilePhoto(saved.profilePhoto);
+    }catch(e){}
+    setDataLoaded(true);
+  },[]);
+
+  // ── Save to localStorage on every relevant change ─────────────────────
+  useEffect(()=>{
+    if(!dataLoaded||window.__kinaraGuest)return;
+    try{
+      localStorage.setItem('kinara_v7',JSON.stringify({sessions,restDaysLog,plans,schedule,theme,lang,profileName,profileBio,profileGoal,profilePhoto}));
+    }catch(e){}
+  },[sessions,restDaysLog,plans,schedule,theme,lang,profileName,profileBio,profileGoal,profilePhoto,dataLoaded]);
+
+  // ── Cloud sync to Supabase (debounced via supabase-auth.js) ───────────
+  useEffect(()=>{
+    if(!dataLoaded||!window.__kinaraSave)return;
+    window.__kinaraSave('sessions',sessions);
+    window.__kinaraSave('restDays',restDaysLog);
+    window.__kinaraSave('plans',plans);
+    window.__kinaraSave('schedule',schedule);
+    window.__kinaraSave('profile',{profileName,profileBio,profileGoal,profilePhoto,theme,lang});
+  },[sessions,restDaysLog,plans,schedule,theme,lang,profileName,profileBio,profileGoal,profilePhoto,dataLoaded]);
+
+  const c=theme==="dark"?DARK:LIGHT;const t=TR[lang];
+  const todayStr=localDateStr();
+  const streak=calcStreak(sessions,restDaysLog);
+  const todayWorkout=sessions.some(s=>s.date===todayStr);
+  const todayRest=restDaysLog.includes(todayStr);
+  const todayActivity=todayWorkout?"workout":todayRest?"rest":null;
+
+  const showToast=(msg,type="success")=>{setToast({msg,type});setTimeout(()=>setToast(null),3000);};
+  const exportData=()=>{const d={sessions,plans,restDaysLog,schedule,theme,lang,profileName,profileBio,profileGoal,profilePhoto,exportedAt:new Date().toISOString(),version:"7"};const blob=new Blob([JSON.stringify(d,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`kinara-backup-${todayStr}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);};
+  const handleImportFile=(e)=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=(ev)=>{try{const d=JSON.parse(ev.target.result);if(Array.isArray(d.sessions))setSessions(d.sessions);if(Array.isArray(d.plans))setPlans(d.plans);if(Array.isArray(d.restDaysLog))setRestDaysLog(d.restDaysLog);if(d.schedule)setSchedule(d.schedule);if(d.theme)setTheme(d.theme);if(d.lang)setLang(d.lang);if(d.profileName)setProfileName(d.profileName);if(d.profileBio!==undefined)setProfileBio(d.profileBio);if(d.profileGoal)setProfileGoal(d.profileGoal);if(d.profilePhoto!==undefined)setProfilePhoto(d.profilePhoto);setMenuOpen(false);setSettingsOpen(false);showToast(t.importOk);}catch{showToast(t.importFail,"error");}};reader.readAsText(file);e.target.value="";};
+  const handlePhotoUpload=(e)=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=(ev)=>{const img=new Image();img.onload=()=>{const canvas=document.createElement("canvas");canvas.width=240;canvas.height=240;const ctx=canvas.getContext("2d");const sz=Math.min(img.width,img.height);const sx=(img.width-sz)/2,sy=(img.height-sz)/2;ctx.drawImage(img,sx,sy,sz,sz,0,0,240,240);setProfilePhoto(canvas.toDataURL("image/jpeg",0.82));};img.src=ev.target.result;};reader.readAsDataURL(file);e.target.value="";};
+  const logRestDay=()=>{if(todayActivity!==null)return;setRestDaysLog(prev=>[...prev,todayStr]);};
+  const undoRestDay=()=>setRestDaysLog(prev=>prev.filter(d=>d!==todayStr));
+  const deletePlan=(planId)=>{if(activeWorkout?.planId===planId)setActiveWorkout(null);setPlans(p=>p.filter(x=>x.id!==planId));setSchedule(s=>{const ns={...s};Object.keys(ns).forEach(k=>{if(ns[k]===planId)ns[k]=null;});return ns;});showToast("Plan deleted");};
+  const selectPlanForWorkout=(planId)=>{setPendingPlanId(planId);setTab("log");};
+
+  useEffect(()=>{if(activeWorkout&&!activeWorkout.paused){timerRef.current=setInterval(()=>setActiveWorkout(w=>w?{...w,elapsed:w.elapsed+1}:w),1000);}else clearInterval(timerRef.current);return()=>clearInterval(timerRef.current);},[!!activeWorkout,activeWorkout?.paused]);
+  useEffect(()=>{if(!activeWorkout?.restTimer||activeWorkout.paused)return;const iv=setInterval(()=>{setActiveWorkout(w=>{if(!w?.restTimer||w.paused)return w;const rem=w.restTimer.remaining-1;if(rem<=0){playBeeps();return{...w,restTimer:null};}return{...w,restTimer:{...w.restTimer,remaining:rem}};});},1000);return()=>clearInterval(iv);},[activeWorkout?.restTimer?.remaining,activeWorkout?.paused]);
+  useEffect(()=>{const s=document.createElement("style");s.textContent=FONTS+`body{background:${c.bg};transition:background 0.3s;}`;document.head.appendChild(s);return()=>document.head.removeChild(s);},[theme]);
+
+  const formatTime=s=>`${String(Math.floor(s/3600)).padStart(2,"0")}:${String(Math.floor((s%3600)/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+  const fmtMin=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
+
+  const startWorkout=(plan)=>{setActiveWorkout({planId:plan.id,planName:plan.name,elapsed:0,paused:false,warmup:plan.warmup.enabled?{enabled:true,target:plan.warmup.duration,done:false}:{enabled:false,done:true},exercises:plan.exercises.map(ex=>({...ex,sets:Array.from({length:ex.sets},()=>({reps:ex.reps,weight:"",done:false}))})),currentExIdx:0,restTimer:null});setTab("log");};
+  const checkSet=(exIdx,setIdx)=>{setActiveWorkout(w=>{if(!w)return w;const exercises=[...w.exercises];const ex={...exercises[exIdx]};const sets=[...ex.sets];sets[setIdx]={...sets[setIdx],done:true};ex.sets=sets;exercises[exIdx]=ex;const allDone=sets.every(s=>s.done);const restTimer=!allDone?{remaining:ex.rest,total:ex.rest,exIdx}:null;const newIdx=allDone&&exIdx<exercises.length-1?exIdx+1:w.currentExIdx;return{...w,exercises,currentExIdx:newIdx,restTimer};});};
+  const updateSet=(exIdx,setIdx,field,val)=>{setActiveWorkout(w=>{if(!w)return w;const exercises=[...w.exercises];const ex={...exercises[exIdx]};const sets=[...ex.sets];sets[setIdx]={...sets[setIdx],[field]:val};ex.sets=sets;exercises[exIdx]=ex;return{...w,exercises};});};
+  const finishWorkout=()=>{
+    if(!activeWorkout)return;
+    const prs=[];
+    activeWorkout.exercises.forEach(ex=>{const weights=ex.sets.filter(s=>s.done&&s.weight).map(s=>parseFloat(s.weight)||0);if(!weights.length)return;const maxW=Math.max(...weights);const prev=sessions.flatMap(s=>s.exercises).filter(e=>e.name===ex.name).flatMap(e=>e.sets).map(s=>parseFloat(s.weight)||0);if(maxW>(prev.length?Math.max(...prev):0))prs.push({exercise:ex.name,weight:maxW});});
+    const session={id:Date.now(),date:todayStr,planName:activeWorkout.planName,duration:activeWorkout.elapsed,exercises:activeWorkout.exercises.map(ex=>({name:ex.name,sets:ex.sets.filter(s=>s.done)})),totalVolume:activeWorkout.exercises.flatMap(ex=>ex.sets.filter(s=>s.done).map(s=>(parseFloat(s.weight)||0)*(parseInt(s.reps)||0))).reduce((a,b)=>a+b,0)};
+    setSessions(prev=>[session,...prev]);setActiveWorkout(null);setPendingPlanId(null);
+    if(prs.length)setShowPR(prs);else showToast(t.woSession);
+  };
+  const allSetsDone=activeWorkout&&activeWorkout.exercises.every(ex=>ex.sets.every(s=>s.done));
+
+  if(!dataLoaded)return(<div style={{display:"flex",height:"100vh",alignItems:"center",justifyContent:"center",background:"#0D0D0D"}}><LogoMark size={40} c={DARK}/></div>);
+
+  return(<div style={{display:"flex",height:"100vh",background:c.bg,fontFamily:"'DM Sans',sans-serif",color:c.textPrimary,overflow:"hidden",transition:"background 0.3s"}}>
+    <input ref={fileInputRef} type="file" accept=".json" onChange={handleImportFile} style={{display:"none"}}/>
+    <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} style={{display:"none"}}/>
+    <Sidebar tab={tab} setTab={setTab} running={!!activeWorkout} streak={streak} profileName={profileName} profilePhoto={profilePhoto} c={c} t={t} onOpenSettings={()=>setSettingsOpen(true)}/>
+    <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      <Header running={!!activeWorkout} time={activeWorkout?.elapsed||0} formatTime={formatTime} setTab={setTab} menuOpen={menuOpen} setMenuOpen={setMenuOpen} c={c} t={t}/>
+      {window.__kinaraGuest&&(<div style={{background:theme==="dark"?"linear-gradient(to right,rgba(196,130,106,0.12),rgba(196,130,106,0.04))":"linear-gradient(to right,rgba(43,85,204,0.08),rgba(43,85,204,0.02))",borderBottom:`1px solid ${c.primary}22`,padding:"8px 26px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,gap:8}}><p style={{fontSize:12,color:c.textSecondary,flex:1,minWidth:0}}>{lang==="ru"?"Гостевой режим — данные не сохраняются.":"Guest mode — your data will not be saved."} <span style={{color:c.primaryLight}}>{lang==="ru"?"Создайте аккаунт для сохранения.":"Create an account to keep your progress."}</span></p><button onClick={()=>window.__kinaraSignOut?.()} style={{background:c.primary,color:"#fff",border:"none",borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",whiteSpace:"nowrap"}}>{lang==="ru"?"Создать аккаунт":"Sign Up"}</button></div>)}
+      {todayActivity===null&&!bannerDismissed&&!activeWorkout&&(<div style={{background:`linear-gradient(to right,${c.primaryDim},transparent)`,borderBottom:`1px solid ${c.primary}22`,padding:"8px 26px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,gap:8}}><p style={{fontSize:12,color:c.textSecondary,flex:1,minWidth:0}}>{t.noActivityToday} <span style={{color:c.primaryLight}}>{t.restStreakNote}</span></p><div style={{display:"flex",gap:7,flexShrink:0}}><button onClick={()=>{logRestDay();setTab("rest");}} style={{background:c.primary,color:"#fff",border:"none",borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",whiteSpace:"nowrap"}}>{t.logRestDay}</button><button onClick={()=>setBannerDismissed(true)} style={{background:"none",border:`1px solid ${c.border}`,color:c.textMuted,borderRadius:7,padding:"5px 9px",fontSize:11.5,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{t.dismiss}</button></div></div>)}
+      <div style={{flex:1,overflow:"auto",padding:"28px 32px"}} className="tab-content kb-main-pad" key={tab}>
+        {tab==="home"&&<HomeTab c={c} t={t} setTab={setTab} running={!!activeWorkout} sessions={sessions} restDaysLog={restDaysLog} todayActivity={todayActivity} logRestDay={logRestDay} plans={plans} schedule={schedule} setSchedule={setSchedule} onSelectPlan={selectPlanForWorkout}/>}
+        {tab==="plans"&&<PlansTab c={c} t={t} theme={theme} plans={plans} setPlans={setPlans} onStart={startWorkout} onDeletePlan={deletePlan}/>}
+        {tab==="log"&&<LogTab c={c} t={t} activeWorkout={activeWorkout} setActiveWorkout={setActiveWorkout} plans={plans} onStart={startWorkout} checkSet={checkSet} updateSet={updateSet} finishWorkout={finishWorkout} allSetsDone={allSetsDone} formatTime={formatTime} fmtMin={fmtMin} todayActivity={todayActivity} defaultPlanId={pendingPlanId}/>}
+        {tab==="rest"&&<RestTab c={c} t={t} todayActivity={todayActivity} onLogRest={logRestDay} onUndoRest={undoRestDay} activeWorkout={!!activeWorkout}/>}
+        {tab==="calendar"&&<CalendarTab c={c} t={t} sessions={sessions} setSessions={setSessions} selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth} selectedDay={selectedDay} setSelectedDay={setSelectedDay} restDaysLog={restDaysLog}/>}
+        {tab==="progress"&&<ProgressTab c={c} t={t} sessions={sessions}/>}
+        {tab==="profile"&&<ProfileTab c={c} t={t} sessions={sessions} restDaysLog={restDaysLog} plans={plans} profileName={profileName} setProfileName={setProfileName} profileBio={profileBio} setProfileBio={setProfileBio} profileGoal={profileGoal} setProfileGoal={setProfileGoal} profilePhoto={profilePhoto} setProfilePhoto={setProfilePhoto} photoInputRef={photoInputRef}/>}
+      </div>
+    </div>
+    <BottomNav tab={tab} setTab={setTab} running={!!activeWorkout} c={c} t={t}/>
+    <BurgerDrawer open={menuOpen} onClose={()=>setMenuOpen(false)} onOpenSettings={()=>setSettingsOpen(true)} onOpenHelp={()=>{}} streak={streak} profileName={profileName} setProfileName={setProfileName} profilePhoto={profilePhoto} c={c} t={t}/>
+    <SettingsModal open={settingsOpen} onClose={()=>setSettingsOpen(false)} theme={theme} setTheme={setTheme} lang={lang} setLang={setLang} onExport={exportData} onImport={()=>fileInputRef.current?.click()} c={c} t={t}/>
+    {showPR&&<PRModal prs={showPR} onClose={()=>setShowPR(null)} c={c} t={t}/>}
+    <Toast msg={toast?.msg} type={toast?.type} c={c}/>
+  </div>);
+}
+
+export default App;

@@ -1,7 +1,7 @@
 # Kinara — Product Roadmap
 
 > **Current state:** Feature-complete single-page app (HTML + CDN React + Supabase) running locally / on GitHub.
-> **End state:** Deployed web app + native mobile app on App Store & Google Play (v1.0).
+> **End state:** Deployed web app + native Android app on Google Play (v1.0).
 
 ---
 
@@ -82,7 +82,7 @@ These are features implied by the UI but not yet built:
 | **Achievements** | Medium | Mentioned in profile; adds retention |
 | **Help & Support page** | Medium | Linked in settings; missing content |
 | **Password reset flow** | High | "Forgot password?" is not implemented — blocks sign-in recovery |
-| **Delete account** | High | Required by Apple App Store & GDPR |
+| **Delete account** | High | Required by GDPR and Play Store guidelines |
 | **Data export (GDPR)** | High | JSON export exists — verify it exports everything |
 | **Terms of Service & Privacy Policy** | High | Legal requirement before accepting real users |
 
@@ -138,7 +138,7 @@ These are features implied by the UI but not yet built:
 
 ### What a PWA gives you
 
-- **Install to home screen** (Android & iOS)
+- **Install to home screen** (Android)
 - **Offline support** — workout log keeps working with no internet
 - **App-like UI** — full-screen, no browser chrome
 - **Push notifications** — remind users to log a workout (with their permission)
@@ -167,7 +167,6 @@ Create `public/manifest.json`:
 Tasks:
 - [ ] Design app icons (192px, 512px, maskable variant)
 - [ ] Add `<link rel="manifest">` to `index.html`
-- [ ] Add `apple-touch-icon` for iOS
 - [ ] Add `theme-color` meta tag
 
 ### 2.2  Service Worker + Offline Support
@@ -201,24 +200,22 @@ Tasks:
 
 - [ ] Lighthouse PWA score: 100
 - [ ] Installable on Android (Chrome)
-- [ ] Installable on iOS (Safari)
 - [ ] Works offline
 - [ ] Splash screen on launch
 
 ---
 
-## Phase 3 — Native Mobile App v1.0
+## Phase 3 — Native Mobile App v1.0 (Android)
 
-> Goal: ship Kinara on the **Apple App Store** and **Google Play Store** as a proper native app.
+> Goal: ship Kinara on **Google Play Store** as a proper native Android app.
 
 ### Recommended Path: Capacitor
 
 **Why Capacitor over React Native:**
 - Reuses the existing Vite/React web codebase — no port required
 - Adds a thin native shell around the web app
-- Access to native APIs (haptics, camera, local notifications, health kit)
+- Access to native APIs (haptics, camera, local notifications)
 - Maintained by the Ionic team — stable, production-proven
-- Ships to both iOS and Android from one codebase
 
 **Why not React Native:**
 - Would require rewriting all UI components in React Native primitives (significant effort)
@@ -229,8 +226,7 @@ Tasks:
 ```bash
 npm install @capacitor/core @capacitor/cli
 npx cap init Kinara app.kinara.www
-npm install @capacitor/ios @capacitor/android
-npx cap add ios
+npm install @capacitor/android
 npx cap add android
 ```
 
@@ -238,7 +234,7 @@ Native plugins to add:
 | Plugin | Purpose |
 |--------|---------|
 | `@capacitor/haptics` | Vibration on set completion, timer end |
-| `@capacitor/local-notifications` | Workout reminders (replaces web push) |
+| `@capacitor/local-notifications` | Workout reminders |
 | `@capacitor/camera` | Profile photo from camera roll |
 | `@capacitor/status-bar` | Control status bar color to match theme |
 | `@capacitor/splash-screen` | Branded launch screen |
@@ -248,30 +244,14 @@ Native plugins to add:
 
 | Item | Notes |
 |------|-------|
-| Safe area insets (iPhone notch) | CSS `env(safe-area-inset-*)` — verify existing layout handles it |
+| Safe area insets | CSS `env(safe-area-inset-*)` — verify existing layout handles it |
 | Tap highlight removal | Already using `user-select: none` in workout log |
 | Scroll behaviour | Native momentum scrolling (`-webkit-overflow-scrolling: touch`) |
 | Keyboard handling | Weight input fields must scroll into view when keyboard opens |
 | Pull-to-refresh | Optional: re-sync from Supabase |
 | Haptics on key interactions | Set logged, rest timer end, PR achieved |
 
-### 3.3  App Store Requirements (Apple)
-
-Before submitting to Apple:
-
-| Requirement | Notes |
-|-------------|-------|
-| **Apple Developer Account** | $99/year |
-| **App Privacy Policy URL** | Must be publicly accessible |
-| **Age rating** | 4+ (no objectionable content) |
-| **Screenshots** | 6.7" iPhone, 6.1" iPhone, 12.9" iPad (at minimum) |
-| **App Review Guidelines** | No references to competitors; must not scrape or harvest data |
-| **Sign in with Apple** | **Required** if app offers any third-party sign-in (Google OAuth). Must add Apple as a sign-in option |
-| **Health data** | If reading Apple Health, requires `NSHealthShareUsageDescription` and entitlement |
-| **Delete account** | In-app account deletion is required by App Store guidelines |
-| **TestFlight beta** | Run 2-4 week beta before public release |
-
-### 3.4  Google Play Requirements
+### 3.3  Google Play Requirements
 
 | Requirement | Notes |
 |-------------|-------|
@@ -283,34 +263,24 @@ Before submitting to Apple:
 | **Play Internal Testing** | Release to internal testers first |
 | **Open Testing / Beta** | 14-day minimum for full review fast-track |
 
-### 3.5  Sign in with Apple (Required)
+### 3.4  v1.0 Feature Completion
 
-Because Kinara supports Google OAuth, Apple requires a matching "Sign in with Apple" option on iOS.
-
-- [ ] Add Supabase Apple OAuth provider
-- [ ] Add "Sign in with Apple" button to auth screen
-- [ ] Configure Apple developer credentials in Supabase
-
-### 3.6  v1.0 Feature Completion
-
-These must be done before App Store submission:
+These must be done before Play Store submission:
 
 | Feature | Status |
 |---------|--------|
 | Password reset | Not built |
-| Delete account (in-app) | Not built — **App Store required** |
-| Sign in with Apple | Not built — **App Store required** |
+| Delete account (in-app) | Not built — required by Play Store |
 | Terms of Service screen | Not built |
 | Privacy Policy screen | Not built |
 | Onboarding flow | Not built |
 | Local notifications (workout reminders) | Not built |
 | Offline mode (Phase 2) | Not built |
 
-### 3.7  Pre-Launch Checklist
+### 3.5  Pre-Launch Checklist
 
-- [ ] TestFlight beta with ≥ 10 real users for 2+ weeks
-- [ ] All App Store screenshots generated
-- [ ] App Store listing copy written (EN + RU)
+- [ ] Play Store internal testing with ≥ 10 real users for 2+ weeks
+- [ ] All Play Store screenshots generated (Android phone + tablet)
 - [ ] Play Store listing copy written (EN + RU)
 - [ ] Privacy Policy hosted at public URL
 - [ ] Terms of Service hosted at public URL
@@ -326,9 +296,7 @@ Features to consider after v1.0 ships:
 
 | Feature | Notes |
 |---------|-------|
-| Apple Health / Google Fit integration | Sync workouts to system health app |
-| Workout timer on lock screen | Live Activity (iOS 16+) showing rest timer |
-| Apple Watch companion app | Rest timer and set logging from wrist |
+| Google Fit integration | Sync workouts to system health app |
 | Social / sharing | Share PRs and milestones as image cards |
 | Coach mode | One account managing multiple athletes |
 | AI-generated plan suggestions | Based on logged history and stated goal |
@@ -345,9 +313,8 @@ Features to consider after v1.0 ships:
 |-------|--------|-------|
 | **Phase 1** — Production web | 4–6 weeks | Largest effort: Vite migration + legal/infra setup |
 | **Phase 2** — PWA | 2–3 weeks | Mostly plugin config + offline logic |
-| **Phase 3** — Native v1.0 | 4–6 weeks | Capacitor setup + Apple/Google submission process + review time |
-| **App Store review** | 1–3 weeks | Apple review is the wild card (average 2-3 days but can be rejected) |
-| **Total to v1.0 launch** | **~3–4 months** | Assumes 1-2 developers working on it |
+| **Phase 3** — Native Android v1.0 | 3–4 weeks | Capacitor setup + Google Play submission + review time |
+| **Total to v1.0 launch** | **~2–3 months** | Assumes 1 developer working on it |
 
 ---
 

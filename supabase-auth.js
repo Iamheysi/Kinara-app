@@ -7,10 +7,6 @@
 // config.js must be loaded BEFORE this script.
 // ─────────────────────────────────────────────────────────────────────────────
 
-if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
-  console.error('[Kinara] config.js not loaded. Copy config.example.js → config.js and add your Supabase credentials.');
-}
-
 // ── Actual table schemas ──────────────────────────────────────────────────────
 //
 //  profiles   → id (PK, uuid = auth user id), name, bio, goal, photo
@@ -22,31 +18,10 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
 // ─────────────────────────────────────────────────────────────────────────────
 
 (function () {
-  const { createClient } = window.supabase;
-  if (!createClient) {
-    console.error('[Kinara] Supabase CDN not loaded. Make sure the supabase-js script tag appears before this file.');
-    return;
-  }
-
-  const db = createClient(SUPA_URL, SUPA_KEY, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-    },
-  });
-  let currentUserId = null;
-  let signingOut = false;
-  let appMounted = false;
-
-  // ── Helpers ─────────────────────────────────────────────────────────────────
-
-  function debounce(fn, ms) {
-    let timer;
-    return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
-  }
 
   // ── Auth Screen i18n ─────────────────────────────────────────────────────────
+  // Defined first — must survive even if Supabase CDN fails to load,
+  // so that language toggle buttons (inline onclick) always respond.
 
   const AUTH_I18N = {
     en: {
@@ -68,7 +43,6 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
       hasAccount: 'Already have an account?',
       signInLink: 'Sign In',
       checkEmail: 'Check Your Email',
-
       didntReceive: "Didn't receive it? Check your spam folder or",
       resendEmail: 'resend email',
       backToSignIn: 'Back to Sign In',
@@ -112,7 +86,6 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
       hasAccount: 'Уже есть аккаунт?',
       signInLink: 'Войти',
       checkEmail: 'Проверьте почту',
-
       didntReceive: 'Не получили? Проверьте спам или',
       resendEmail: 'отправить повторно',
       backToSignIn: 'Назад ко входу',
@@ -145,19 +118,16 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
     authLang = lang;
     const strings = AUTH_I18N[lang] || AUTH_I18N.en;
 
-    // Update text content
     document.querySelectorAll('[data-i18n]').forEach(el => {
       const key = el.getAttribute('data-i18n');
       if (strings[key]) el.textContent = strings[key];
     });
 
-    // Update placeholders
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
       const key = el.getAttribute('data-i18n-placeholder');
       if (strings[key]) el.placeholder = strings[key];
     });
 
-    // Style language toggle buttons
     const enBtn = document.getElementById('auth-lang-en');
     const ruBtn = document.getElementById('auth-lang-ru');
     if (enBtn && ruBtn) {
@@ -171,11 +141,62 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
     }
   }
 
-  // Expose to inline onclick handlers
+  // Exposed to inline onclick handlers — must be set before any guard returns.
   window.setAuthLang = applyAuthLang;
 
   function t18n(key) {
     return (AUTH_I18N[authLang] || AUTH_I18N.en)[key] || key;
+  }
+
+  // ── CDN guard — show visible error and bail if Supabase didn't load ──────────
+
+  function showCdnError() {
+    // Inject a banner into the auth card so the user knows what's wrong
+    document.addEventListener('DOMContentLoaded', () => {
+      const card = document.querySelector('#auth-gate > div:not([style*="margin-top"])');
+      if (!card) return;
+      const banner = document.createElement('div');
+      banner.style.cssText = 'background:#FFF0F0;border:1px solid #F5C6C6;border-radius:10px;padding:14px 16px;margin-bottom:12px;font-size:13px;color:#8B2020;line-height:1.5;font-family:\'DM Sans\',sans-serif;';
+      banner.innerHTML = '⚠️ <strong>Could not connect to the server.</strong><br>Check your internet connection and reload the page. If this keeps happening, try a different browser or network.';
+      card.prepend(banner);
+
+      // Disable all auth action buttons gracefully
+      ['email-signin-btn','email-signup-btn','google-signin-btn','try-guest-btn'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) { btn.disabled = true; btn.style.opacity = '0.4'; btn.style.cursor = 'not-allowed'; }
+      });
+    });
+  }
+
+  const { createClient } = window.supabase || {};
+  if (!createClient) {
+    console.error('[Kinara] Supabase CDN not loaded. Make sure the supabase-js script tag appears before this file.');
+    showCdnError();
+    return;
+  }
+
+  if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
+    console.error('[Kinara] config.js not loaded. Copy config.example.js → config.js and add your Supabase credentials.');
+  }
+
+  // ── Supabase client ──────────────────────────────────────────────────────────
+
+  const db = createClient(SUPA_URL, SUPA_KEY, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  });
+  let currentUserId = null;
+  let signingOut = false;
+  let appMounted = false;
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+
+  function debounce(fn, ms) {
+    let timer;
+    return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
   }
 
   // ── Auth Gate UI ─────────────────────────────────────────────────────────────
@@ -190,11 +211,6 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
     if (el) el.style.display = 'none';
   }
 
-  function showLoading(msg) {
-    const el = document.getElementById('auth-loading');
-    if (el) el.textContent = msg || t18n('loading');
-  }
-
   // ── Guest / Trial mode ──────────────────────────────────────────────────────
 
   window.__kinaraGuest = false;
@@ -202,7 +218,6 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
   function launchGuestMode() {
     window.__kinaraGuest = true;
     window.__kinaraUserEmail = null;
-    // Set the app language to match the auth screen choice
     window.__kinaraGuestLang = authLang;
     mountReact({});
   }
@@ -227,53 +242,43 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
           db.from('rest_days').select('logged_date').eq('user_id', userId),
           db.from('schedule').select('*').eq('user_id', userId).maybeSingle(),
         ]),
-        12000 // 12-second timeout
+        12000
       );
 
       const p = profileRes.data;
       return {
-        profileName: p?.name        || 'My Profile',
-        profileBio:  p?.bio         || '',
-        profileGoal: p?.goal        || 'general',
-        profilePhoto:p?.photo       || null,
-        // null means "use app defaults" — the React useState initializer handles this
-        plans:    plansRes.data?.length    ? plansRes.data.map(r => r.data)    : null,
-        sessions: sessionsRes.data?.length ? sessionsRes.data.map(r => r.data) : [],
+        profileName:  p?.name  || 'My Profile',
+        profileBio:   p?.bio   || '',
+        profileGoal:  p?.goal  || 'general',
+        profilePhoto: p?.photo || null,
+        plans:       plansRes.data?.length    ? plansRes.data.map(r => r.data)    : null,
+        sessions:    sessionsRes.data?.length ? sessionsRes.data.map(r => r.data) : [],
         restDaysLog: restRes.data?.map(r => r.logged_date) || [],
-        schedule: schedRes.data?.data || null,
+        schedule:    schedRes.data?.data || null,
       };
     } catch (e) {
       console.error('[Kinara] Failed to load user data:', e);
-      return {}; // app falls back to defaults
+      return {};
     }
   }
 
   // ── Data Sync Helpers ─────────────────────────────────────────────────────────
 
   async function syncSessions(userId, sessions) {
-    // Replace strategy: delete all user sessions then re-insert
-    // (DB id is auto bigint so we can't upsert by app-level id)
     await db.from('sessions').delete().eq('user_id', userId);
     if (sessions.length) {
-      const rows = sessions.map(s => ({
-        user_id: userId,
-        logged_date: s.date,
-        data: s,
-      }));
+      const rows = sessions.map(s => ({ user_id: userId, logged_date: s.date, data: s }));
       const { error } = await db.from('sessions').insert(rows);
       if (error) throw error;
     }
   }
 
   async function syncRestDays(userId, restDaysLog) {
-    // Diff-based sync using the correct column name: logged_date
     const { data: existing } = await db.from('rest_days').select('logged_date').eq('user_id', userId);
     const existingDates = new Set(existing?.map(r => r.logged_date) || []);
     const newDates      = new Set(restDaysLog);
-
     const toInsert = restDaysLog.filter(d => !existingDates.has(d));
     const toDelete  = [...existingDates].filter(d => !newDates.has(d));
-
     if (toInsert.length)
       await db.from('rest_days').insert(toInsert.map(logged_date => ({ user_id: userId, logged_date })));
     if (toDelete.length)
@@ -281,8 +286,6 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
   }
 
   async function syncPlans(userId, plans) {
-    // Replace strategy: delete all user plans then re-insert
-    // (DB id is auto bigint so we can't upsert by app-level id)
     await db.from('plans').delete().eq('user_id', userId);
     if (plans.length) {
       const rows = plans.map(p => ({ user_id: userId, data: p }));
@@ -291,28 +294,19 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
   }
 
   async function syncSchedule(userId, schedule) {
-    // Delete then insert (no unique constraint on user_id, id is auto bigint)
     await db.from('schedule').delete().eq('user_id', userId);
     await db.from('schedule').insert({ user_id: userId, data: schedule });
   }
 
   async function syncProfile(userId, profile) {
-    // profiles.id IS the auth user uuid (not a separate user_id column)
     await db.from('profiles').upsert(
-      {
-        id:    userId,
-        name:  profile.profileName,
-        bio:   profile.profileBio,
-        goal:  profile.profileGoal,
-        photo: profile.profilePhoto,
-      },
+      { id: userId, name: profile.profileName, bio: profile.profileBio, goal: profile.profileGoal, photo: profile.profilePhoto },
       { onConflict: 'id' }
     );
   }
 
   // ── Global API for React app ──────────────────────────────────────────────────
 
-  // Per-key debounced save — each key gets its own timer so they don't cancel each other
   const syncFns = {
     sessions: (uid, v) => syncSessions(uid, v),
     restDays: (uid, v) => syncRestDays(uid, v),
@@ -325,22 +319,17 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
 
   window.__kinaraSave = (key, value) => {
     if (window.__kinaraGuest || !currentUserId || signingOut) return;
-    // Store the latest value so flush can use it
     pendingCalls[key] = { uid: currentUserId, value };
     clearTimeout(pendingTimers[key]);
     pendingTimers[key] = setTimeout(async () => {
       const call = pendingCalls[key];
       delete pendingCalls[key];
       if (!call || signingOut) return;
-      try {
-        await syncFns[key](call.uid, call.value);
-      } catch (e) {
-        console.error(`[Kinara] Sync error [${key}]:`, e);
-      }
+      try { await syncFns[key](call.uid, call.value); }
+      catch (e) { console.error(`[Kinara] Sync error [${key}]:`, e); }
     }, 900);
   };
 
-  // Flush all pending debounced writes immediately (used before sign-out)
   async function flushPendingSync() {
     const keys = Object.keys(pendingCalls);
     for (const key of keys) {
@@ -354,18 +343,16 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
     }
   }
 
-  // Sign-out — flush pending data to cloud, then sign out
   window.__kinaraSignOut = async () => {
     if (window.__kinaraGuest) { location.reload(); return; }
     signingOut = true;
     appMounted = false;
-    await flushPendingSync();      // save any unsaved data before signing out
+    await flushPendingSync();
     currentUserId = null;
     await db.auth.signOut();
     location.reload();
   };
 
-  // ── Expose user email to React app ──────────────────────────────────────────
   window.__kinaraUserEmail = null;
 
   // ── Auth state machine ────────────────────────────────────────────────────────
@@ -373,48 +360,31 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
   function mountReact(data) {
     window.__kinaraData = data;
     hideAuthGate();
-
     if (typeof window.__mountApp === 'function') {
-      // Babel already finished — mount now
       window.__mountApp();
     } else {
-      // Babel hasn't run yet — flag so it mounts itself when ready
       window.__kinaraReady = true;
     }
   }
 
   db.auth.onAuthStateChange(async (event, session) => {
-    // Ignore everything while signing out — we'll reload the page anyway
     if (signingOut) return;
 
     if (session?.user) {
       currentUserId = session.user.id;
       window.__kinaraUserEmail = session.user.email || null;
 
-      // If we're awaiting email confirmation and the user isn't confirmed yet,
-      // don't mount the app — stay on the OTP screen.
-      if (awaitingEmailConfirm && !session.user.email_confirmed_at) {
-        return;
-      }
-
-      // Email is now confirmed (or was never required) — proceed
+      if (awaitingEmailConfirm && !session.user.email_confirmed_at) return;
       awaitingEmailConfirm = false;
 
-      // Mount app on first valid session, regardless of event type.
-      // This covers INITIAL_SESSION, SIGNED_IN, and TOKEN_REFRESHED (in case
-      // the initial event fires before the app is mounted).
-      // appMounted is set BEFORE the async call to prevent a race condition
-      // where a second auth event fires during loadUserData and triggers a
-      // double-mount (two React roots on the same element breaks interaction).
+      // Set appMounted BEFORE the await to prevent a race condition where a
+      // second auth event during loadUserData triggers a double-mount.
       if (!appMounted) {
         appMounted = true;
         const data = await loadUserData(session.user.id);
         mountReact(data);
       }
     } else if (event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
-      // Only show auth gate on explicit sign-out or when there is truly
-      // no session on first load.  Transient TOKEN_REFRESHED events with a
-      // null session (rare) should NOT kick the user out.
       currentUserId = null;
       window.__kinaraUserEmail = null;
       appMounted = false;
@@ -427,12 +397,9 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
   async function signInWithGoogle() {
     const btn = document.getElementById('google-signin-btn');
     if (btn) { btn.disabled = true; btn.textContent = t18n('redirecting'); }
-
     await db.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: window.location.origin + window.location.pathname,
-      },
+      options: { redirectTo: window.location.origin + window.location.pathname },
     });
   }
 
@@ -493,7 +460,6 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
       showError('auth-error', error.message);
       if (btn) { btn.disabled = false; btn.textContent = t18n('signInBtn'); }
     } else {
-      // Sign-in succeeded — switch to loading view while data loads
       switchView('loading');
     }
   }
@@ -520,10 +486,8 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
       showError('signup-error', error.message);
       if (btn) { btn.disabled = false; btn.textContent = t18n('createAccountBtn'); }
     } else if (data?.session) {
-      // Auto-confirmed — Supabase returned a session. Let onAuthStateChange handle it.
-      // (loadUserData + mountReact will be triggered by the SIGNED_IN event)
+      // Auto-confirmed — onAuthStateChange handles mount
     } else {
-      // Email confirmation required — show the OTP / waiting screen
       lastSignupEmail = email;
       awaitingEmailConfirm = true;
       const display = document.getElementById('confirm-email-display');
@@ -569,7 +533,7 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
   function shakeOtpInputs() {
     document.querySelectorAll('.otp-digit').forEach(i => {
       i.classList.remove('otp-error-shake');
-      void i.offsetWidth; // force reflow
+      void i.offsetWidth;
       i.classList.add('otp-error-shake');
       i.style.borderColor = '#D9534F';
     });
@@ -590,7 +554,6 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
         input.classList.toggle('otp-filled', !!input.value);
         if (val && idx < digits.length - 1) digits[idx + 1].focus();
         updateVerifyButton();
-        // Auto-verify when all 6 digits are entered
         if (getOtpCode().length === 8) verifyOtp();
       });
       input.addEventListener('keydown', (e) => {
@@ -601,15 +564,11 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
           updateVerifyButton();
         }
       });
-      // Handle paste — spread across all inputs
       input.addEventListener('paste', (e) => {
         e.preventDefault();
         const pasted = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 8);
         pasted.split('').forEach((ch, i) => {
-          if (digits[i]) {
-            digits[i].value = ch;
-            digits[i].classList.toggle('otp-filled', true);
-          }
+          if (digits[i]) { digits[i].value = ch; digits[i].classList.toggle('otp-filled', true); }
         });
         const focusIdx = Math.min(pasted.length, digits.length - 1);
         digits[focusIdx].focus();
@@ -627,11 +586,7 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
     const btn = document.getElementById('verify-otp-btn');
     if (btn) { btn.disabled = true; btn.textContent = t18n('verifying'); }
 
-    const { error } = await db.auth.verifyOtp({
-      email: lastSignupEmail,
-      token: code,
-      type: 'email',
-    });
+    const { error } = await db.auth.verifyOtp({ email: lastSignupEmail, token: code, type: 'email' });
 
     if (error) {
       shakeOtpInputs();
@@ -639,11 +594,9 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
       const isExpired = error.message.toLowerCase().includes('expired') || error.message.toLowerCase().includes('invalid');
       showError('otp-error', isExpired ? t18n('otpInvalid') : error.message);
       if (btn) { btn.disabled = true; btn.style.background = '#C4CFEA'; btn.style.cursor = 'not-allowed'; btn.textContent = t18n('verifyBtn'); }
-      // Focus first OTP input for retry
       const first = document.querySelector('.otp-digit');
       if (first) first.focus();
     }
-    // On success, onAuthStateChange will fire SIGNED_IN and mount the app
   }
 
   // ── Bind buttons on DOMContentLoaded ───────────────────────────────────────
@@ -658,7 +611,6 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
     document.getElementById('email-signup-btn')
       ?.addEventListener('click', signUpWithEmail);
 
-    // View toggles
     document.getElementById('show-signup-link')
       ?.addEventListener('click', (e) => { e.preventDefault(); switchView('signup'); });
     document.getElementById('show-signin-link')
@@ -670,7 +622,6 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
     document.getElementById('verify-otp-btn')
       ?.addEventListener('click', verifyOtp);
 
-    // Allow Enter key to submit
     document.getElementById('auth-password')
       ?.addEventListener('keydown', (e) => { if (e.key === 'Enter') signInWithEmail(); });
     document.getElementById('signup-password')
@@ -678,7 +629,6 @@ if (typeof SUPA_URL === 'undefined' || typeof SUPA_KEY === 'undefined') {
     document.getElementById('signup-email-confirm')
       ?.addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('signup-password')?.focus(); });
 
-    // Guest / trial mode
     document.getElementById('try-guest-btn')
       ?.addEventListener('click', launchGuestMode);
   });
