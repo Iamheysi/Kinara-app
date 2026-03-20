@@ -37,8 +37,13 @@ export function SettingsModal({open,onClose,theme,setTheme,lang,setLang,onExport
 
     <div style={{height:1,background:c.border,margin:"14px 0"}}/>
     <p style={{fontSize:9.5,color:c.textMuted,letterSpacing:1.8,fontWeight:700,textTransform:"uppercase",marginBottom:9,paddingLeft:2}}>{t.reminders}</p>
-    <Toggle icon={Ic.bell} label={isRu?"Напоминание о тренировке":"Workout Reminder"} desc={isRu?"Уведомление в выбранное время":"Daily notification at your chosen time"} checked={reminderEnabled} onChange={setReminderEnabled}/>
-    {reminderEnabled&&(<div style={{background:c.surface,border:`1px solid ${c.border}`,borderRadius:11,padding:"10px 15px",marginBottom:10,display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:12,color:c.textSecondary}}>{isRu?"Время:":"Time:"}</span><input type="time" value={reminderTime} onChange={e=>setReminderTime(e.target.value)} style={{background:c.inputBg,border:`1px solid ${c.border}`,borderRadius:6,padding:"4px 8px",color:c.textPrimary,fontSize:12,fontFamily:"'JetBrains Mono',monospace"}}/><span style={{fontSize:10,color:c.primary,flex:1,fontWeight:500}}>{isRu?"Настроено":"Scheduled"} ✓</span></div>)}
+    <div style={{background:c.surface,border:`1px solid ${c.border}`,borderRadius:11,padding:"13px 15px",marginBottom:10,opacity:0.6}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}><span style={{color:c.textMuted}}>{Ic.bell}</span><p style={{fontSize:13,fontWeight:500,color:c.textPrimary}}>{isRu?"Напоминания о тренировках":"Workout Reminders"}</p></div>
+      <div style={{background:c.bg,borderRadius:8,padding:"10px 12px",border:`1px dashed ${c.border}`}}>
+        <p style={{fontSize:12,color:c.textSecondary,lineHeight:1.5}}>{isRu?"Push-уведомления появятся в следующем обновлении. Мы работаем над этим!":"Push notifications are coming in a future update. We're working on it!"}</p>
+        <span style={{display:"inline-block",marginTop:6,fontSize:10,fontWeight:600,color:c.textMuted,background:c.border,padding:"3px 10px",borderRadius:12}}>{isRu?"Скоро":"Coming Soon"}</span>
+      </div>
+    </div>
 
     <div style={{height:1,background:c.border,margin:"14px 0"}}/>
     <p style={{fontSize:9.5,color:c.textMuted,letterSpacing:1.8,fontWeight:700,textTransform:"uppercase",marginBottom:9,paddingLeft:2}}>{isRu?"Отдых":"Rest Days"}</p>
