@@ -37,7 +37,7 @@ export function AchievementsModal({ open, onClose, achievements, c, lang }) {
         display: "flex", alignItems: "flex-start", gap: 14,
         background: c.surface, border: `1px solid ${isEarned ? c.gold + "33" : c.border}`,
         borderRadius: 14, padding: "14px 16px", marginBottom: 10,
-        opacity: isEarned ? 1 : 0.5, position: "relative",
+        opacity: isEarned ? 1 : 0.75, position: "relative",
         transition: "opacity 0.3s ease, transform 0.3s ease"
       }}>
         {/* Icon circle */}
@@ -66,7 +66,7 @@ export function AchievementsModal({ open, onClose, achievements, c, lang }) {
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
             <p style={{
               fontFamily: "'Barlow Condensed',sans-serif", fontSize: 15, fontWeight: 700,
-              color: isEarned ? c.textPrimary : c.textSecondary, lineHeight: 1.2
+              color: c.textPrimary, lineHeight: 1.2
             }}>{a.label}</p>
             {isEarned && (
               <span style={{

@@ -82,13 +82,13 @@ These are features implied by the UI but not yet built:
 |---------|----------|-------|--------|
 | **Onboarding flow** | High | 3-step wizard (set goal → pick/create plan → dashboard) | ⬜ Not started |
 | **Empty states** | High | Every tab needs an empty-state illustration + CTA | ⬜ Not started |
-| **Reminders / notifications** | Medium | Settings UI mentions it; implementation is missing | 🔧 In progress |
-| **Achievements** | Medium | Expandable on Profile tab; shortcut in burger drawer | ✅ Done |
-| **Help & Support page** | Medium | Linked in settings; missing content | 🔧 In progress |
+| **Reminders / notifications** | Medium | Settings UI shows "Coming Soon"; push notifications planned for Phase 2/3 | 🔧 In progress |
+| **Achievements** | Medium | 25 achievements with full modal, progress bars, gamified design | ✅ Done |
+| **Help & Support page** | Medium | Accessible from settings and burger drawer | ✅ Done |
 | **Password reset flow** | High | "Forgot password?" is not implemented | ⬜ Not started |
-| **Delete account** | High | Required by GDPR and Play Store / RuStore guidelines | ⬜ Not started |
+| **Delete account** | High | Danger Zone in Settings: reset progress, clear data, delete account with confirmation | ✅ Done |
 | **Data export (GDPR)** | High | JSON export exists — verify completeness | ✅ Done |
-| **Terms of Service & Privacy Policy** | High | Legal requirement before accepting real users | 🔧 In progress |
+| **Terms of Service & Privacy Policy** | High | Pages created, accessible from burger drawer and settings | ✅ Done |
 
 ---
 
@@ -127,8 +127,8 @@ These are features implied by the UI but not yet built:
 - [ ] Sentry error monitoring live
 - [ ] Analytics live
 - [ ] Password reset flow
-- [ ] Delete account
-- [x] Terms of Service + Privacy Policy pages (drafts created)
+- [x] Delete account (Danger Zone in Settings)
+- [x] Terms of Service + Privacy Policy pages
 - [ ] Onboarding wizard
 - [ ] Empty states on all tabs
 - [ ] Lighthouse ≥ 90 on mobile
@@ -288,9 +288,9 @@ These must be done before store submissions:
 | Feature | Status |
 |---------|--------|
 | Password reset | Not built |
-| Delete account (in-app) | Not built — required by Play Store and RuStore |
-| Terms of Service screen | 🔧 In progress |
-| Privacy Policy screen | 🔧 In progress |
+| Delete account (in-app) | ✅ Done — Danger Zone in Settings |
+| Terms of Service screen | ✅ Done |
+| Privacy Policy screen | ✅ Done |
 | Onboarding flow | Not built |
 | Local notifications (workout reminders) | Not built |
 | Offline mode (Phase 2) | Not built |
