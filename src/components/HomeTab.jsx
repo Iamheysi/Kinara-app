@@ -4,9 +4,9 @@ import { UpNextWidget } from './UpNextWidget.jsx';
 import { calcStreak, localDateStr } from '../utils.js';
 import { QUOTES } from '../constants.js';
 
-export function HomeTab({c,t,lang,setTab,running,sessions,restDaysLog,todayActivity,logRestDay,plans,schedule,setSchedule,onSelectPlan,profileName}){
+export function HomeTab({c,t,lang,setTab,running,sessions,restDaysLog,sickDaysLog,todayActivity,logRestDay,plans,schedule,setSchedule,onSelectPlan,profileName}){
   const isRu=lang==="ru";
-  const streak=calcStreak(sessions,restDaysLog);const quote=QUOTES[new Date().getDate()%QUOTES.length];
+  const streak=calcStreak(sessions,restDaysLog,schedule,sickDaysLog);const quote=QUOTES[new Date().getDate()%QUOTES.length];
   const h=new Date().getHours();
   const greeting=h<12?t.goodMorning:h<18?t.goodAfternoon:t.goodEvening;
   const firstName=profileName&&profileName!=="My Profile"?profileName.split(" ")[0]:"";

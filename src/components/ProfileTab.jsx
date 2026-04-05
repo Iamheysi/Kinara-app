@@ -3,12 +3,12 @@ import { Ic } from '../icons.jsx';
 import { StatCard } from './StatCard.jsx';
 import { calcStreak, calcConsistency, localDateStr } from '../utils.js';
 
-export function ProfileTab({c,t,lang,sessions,restDaysLog,plans,profileName,setProfileName,profileBio,setProfileBio,profileGoal,setProfileGoal,profilePhoto,setProfilePhoto,photoInputRef,showToast,achievements,onOpenAchievements}){
+export function ProfileTab({c,t,lang,sessions,restDaysLog,sickDaysLog,schedule,plans,profileName,setProfileName,profileBio,setProfileBio,profileGoal,setProfileGoal,profilePhoto,setProfilePhoto,photoInputRef,showToast,achievements,onOpenAchievements}){
   const [editing,setEditing]=useState(false);const [draftName,setDraftName]=useState(profileName);const [draftBio,setDraftBio]=useState(profileBio);const [draftGoal,setDraftGoal]=useState(profileGoal);
   const [showMiniProfile,setShowMiniProfile]=useState(false);
   const [cropPreview,setCropPreview]=useState(null);
   const isRu=lang==="ru";
-  const streak=calcStreak(sessions,restDaysLog);const totalVol=sessions.reduce((a,s)=>a+s.totalVolume,0);
+  const streak=calcStreak(sessions,restDaysLog,schedule,sickDaysLog);const totalVol=sessions.reduce((a,s)=>a+s.totalVolume,0);
   const exPRs={};sessions.forEach(s=>s.exercises.forEach(ex=>{const max=Math.max(...ex.sets.map(s2=>parseFloat(s2.weight)||0),0);if(max>0&&(!exPRs[ex.name]||max>exPRs[ex.name]))exPRs[ex.name]=max;}));
   const exFreq={};sessions.forEach(s=>s.exercises.forEach(ex=>{exFreq[ex.name]=(exFreq[ex.name]||0)+1;}));
   const topEx=Object.entries(exFreq).sort((a,b)=>b[1]-a[1]).slice(0,5);
