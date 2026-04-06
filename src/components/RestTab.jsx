@@ -6,7 +6,7 @@ export function RestTab({c,t,lang,todayActivity,onLogRest,onUndoRest,schedule={}
   const isRu=lang==="ru";
   const totalRest=restDaysLog?restDaysLog.length:0;
   const totalSessions=sessions?sessions.length:0;
-  const ratio=totalSessions>0?(totalRest/totalSessions).toFixed(1):"—";
+  const recoveryPct=(totalRest+totalSessions)>0?Math.round(totalRest/(totalRest+totalSessions)*100):0;
   // Calculate consecutive rest day streak (counting backwards from today)
   const getRestStreak=()=>{
     if(!restDaysLog||restDaysLog.length===0)return 0;
@@ -87,8 +87,8 @@ export function RestTab({c,t,lang,todayActivity,onLogRest,onUndoRest,schedule={}
           <p style={{fontSize:11,color:c.textSecondary}}>{isRu?"Текущий стрик":"Current Streak"}</p>
         </div>
         <div style={{flex:1,background:c.bg,borderRadius:10,padding:"12px 10px",textAlign:"center"}}>
-          <p style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:900,color:c.textPrimary}}>{ratio}</p>
-          <p style={{fontSize:11,color:c.textSecondary}}>{isRu?"Отдых:Трен.":"Rest:Work"}</p>
+          <p style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:900,color:c.textPrimary}}>{recoveryPct}%</p>
+          <p style={{fontSize:11,color:c.textSecondary}}>{isRu?"Дни отдыха":"Recovery %"}</p>
         </div>
       </div>
     </div>

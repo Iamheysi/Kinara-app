@@ -46,4 +46,6 @@ input[type=number]{-moz-appearance:textfield;}
 .tab-content{animation:fadeUp .26s ease;}
 .kb-card-hover{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;}
 .kb-card-hover:hover{transform:translateY(-1px);}
+.kb-cal-day{transition:all 0.15s ease;}
+.kb-cal-day:hover{background:var(--cal-hover-bg,rgba(128,128,140,0.12))!important;transform:scale(1.08);}
 @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
