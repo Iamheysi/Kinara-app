@@ -266,13 +266,12 @@
   async function loadUserData(userId) {
     switchView('loading');
     try {
-      const [profileRes, plansRes, sessionsRes, restRes, sickRes, schedRes] = await withTimeout(
+      const [profileRes, plansRes, sessionsRes, restRes, schedRes] = await withTimeout(
         Promise.all([
           db.from('profiles').select('*').eq('id', userId).maybeSingle(),
           db.from('plans').select('*').eq('user_id', userId),
           db.from('sessions').select('*').eq('user_id', userId).order('logged_date', { ascending: false }),
           db.from('rest_days').select('logged_date').eq('user_id', userId),
-          db.from('sick_days').select('logged_date').eq('user_id', userId).catch(() => ({ data: [] })),
           db.from('schedule').select('*').eq('user_id', userId).maybeSingle(),
         ]),
         12000
@@ -287,7 +286,6 @@
         plans:       plansRes.data?.length    ? plansRes.data.map(r => r.data)    : null,
         sessions:    sessionsRes.data?.length ? sessionsRes.data.map(r => r.data) : [],
         restDaysLog: restRes.data?.map(r => r.logged_date) || [],
-        sickDaysLog: sickRes?.data?.map(r => r.logged_date) || [],
         schedule:    schedRes.data?.data || null,
       };
     } catch (e) {
@@ -319,18 +317,6 @@
       await db.from('rest_days').delete().eq('user_id', userId).in('logged_date', toDelete);
   }
 
-  async function syncSickDays(userId, sickDaysLog) {
-    const { data: existing } = await db.from('sick_days').select('logged_date').eq('user_id', userId);
-    const existingDates = new Set(existing?.map(r => r.logged_date) || []);
-    const newDates      = new Set(sickDaysLog);
-    const toInsert = sickDaysLog.filter(d => !existingDates.has(d));
-    const toDelete  = [...existingDates].filter(d => !newDates.has(d));
-    if (toInsert.length)
-      await db.from('sick_days').insert(toInsert.map(logged_date => ({ user_id: userId, logged_date })));
-    if (toDelete.length)
-      await db.from('sick_days').delete().eq('user_id', userId).in('logged_date', toDelete);
-  }
-
   async function syncPlans(userId, plans) {
     await db.from('plans').delete().eq('user_id', userId);
     if (plans.length) {
@@ -356,7 +342,6 @@
   const syncFns = {
     sessions: (uid, v) => syncSessions(uid, v),
     restDays: (uid, v) => syncRestDays(uid, v),
-    sickDays: (uid, v) => syncSickDays(uid, v),
     plans:    (uid, v) => syncPlans(uid, v),
     schedule: (uid, v) => syncSchedule(uid, v),
     profile:  (uid, v) => syncProfile(uid, v),

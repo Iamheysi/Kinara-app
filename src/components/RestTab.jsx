@@ -1,15 +1,12 @@
 import { RECOVERY_FACTS } from '../constants.js';
 import { KIcon } from '../brandedIcons.jsx';
-import { sickDaysUsedLast30, MAX_SICK_DAYS_PER_30 } from '../utils.js';
 
-export function RestTab({c,t,lang,todayActivity,onLogRest,onUndoRest,onLogSick,onUndoSick,sickDaysLog=[],schedule={},activeWorkout,onOverrideRest,autoRestEnabled,setAutoRestEnabled,restDaysLog,sessions,streak}){
+export function RestTab({c,t,lang,todayActivity,onLogRest,onUndoRest,schedule={},activeWorkout,onOverrideRest,autoRestEnabled,setAutoRestEnabled,restDaysLog,sessions,streak}){
   const fact=RECOVERY_FACTS[new Date().getDate()%RECOVERY_FACTS.length];
   const isRu=lang==="ru";
   const totalRest=restDaysLog?restDaysLog.length:0;
   const totalSessions=sessions?sessions.length:0;
   const ratio=totalSessions>0?(totalRest/totalSessions).toFixed(1):"—";
-  const sickUsed=sickDaysUsedLast30(sickDaysLog);
-  const sickRemaining=MAX_SICK_DAYS_PER_30-sickUsed;
   // Calculate consecutive rest day streak (counting backwards from today)
   const getRestStreak=()=>{
     if(!restDaysLog||restDaysLog.length===0)return 0;
@@ -44,32 +41,10 @@ export function RestTab({c,t,lang,todayActivity,onLogRest,onUndoRest,onLogSick,o
         <button onClick={onLogRest} style={{background:c.primary,color:"#fff",border:"none",borderRadius:13,padding:"13px 32px",fontSize:16,fontWeight:900,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",boxShadow:`0 4px 16px ${c.primary}44`,flex:1,minWidth:160}}>
           {isRu?"ДЕНЬ ОТДЫХА":"LOG REST DAY"}
         </button>
-        {onLogSick&&(
-          <button onClick={onLogSick} disabled={sickRemaining<=0} style={{
-            background:"none",border:`1.5px solid ${sickRemaining>0?c.border:c.border}`,
-            color:sickRemaining>0?c.textSecondary:c.textMuted,
-            borderRadius:13,padding:"13px 20px",fontSize:14,fontWeight:600,
-            fontFamily:"'DM Sans',sans-serif",cursor:sickRemaining>0?"pointer":"not-allowed",
-            display:"flex",alignItems:"center",gap:8,opacity:sickRemaining>0?1:0.5,
-          }}>
-            <KIcon.sick color={sickRemaining>0?c.textSecondary:c.textMuted} size={18}/>
-            {isRu?"Больничный":"Sick Day"}
-            <span style={{fontSize:11,color:c.textMuted,fontWeight:400}}>({sickRemaining}/{MAX_SICK_DAYS_PER_30})</span>
-          </button>
-        )}
       </div>
     )}
 
     {todayActivity==="rest"&&(<div style={{background:c.successDim,border:`1px solid ${c.success}44`,borderRadius:12,padding:"16px 20px"}}><p style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:900,color:c.success,marginBottom:3}}>✓ {t.loggedState}</p><p style={{fontSize:13,color:c.textSecondary,marginBottom:12}}>{t.streakSafe}</p><div style={{display:"flex",gap:8}}><button onClick={onUndoRest} style={{background:"none",border:`1px solid ${c.border}`,color:c.textSecondary,borderRadius:8,padding:"7px 13px",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{t.undoRest}</button>{onOverrideRest&&<button onClick={onOverrideRest} style={{background:"none",border:`1px solid ${c.primary}44`,color:c.primary,borderRadius:8,padding:"7px 13px",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{isRu?"Тренироваться вместо отдыха":"Switch to Workout"}</button>}</div></div>)}
-
-    {todayActivity==="sick"&&(<div style={{background:`${c.gold}12`,border:`1px solid ${c.gold}33`,borderRadius:12,padding:"16px 20px",marginBottom:16}}>
-      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
-        <KIcon.sick color={c.gold} size={22}/>
-        <p style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:900,color:c.gold}}>{isRu?"Больничный день":"Sick Day Logged"}</p>
-      </div>
-      <p style={{fontSize:13,color:c.textSecondary,marginBottom:12}}>{isRu?"Серия защищена. Выздоравливайте!":"Streak protected. Get well soon!"}</p>
-      <button onClick={onUndoSick} style={{background:"none",border:`1px solid ${c.border}`,color:c.textSecondary,borderRadius:8,padding:"7px 13px",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{isRu?"Отменить":"Undo"}</button>
-    </div>)}
 
     {/* Streak explanation */}
     <div style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:13,padding:"14px 18px",marginTop:16,marginBottom:4}}>
@@ -78,8 +53,8 @@ export function RestTab({c,t,lang,todayActivity,onLogRest,onUndoRest,onLogSick,o
         <p style={{fontSize:12,fontWeight:700,color:c.primary,letterSpacing:0.5}}>{isRu?"КАК РАБОТАЕТ СТРИК":"HOW STREAKS WORK"}</p>
       </div>
       <p style={{fontSize:12,color:c.textSecondary,lineHeight:1.6}}>{isRu
-        ?"Стрик считает дни, когда вы следуете своему расписанию. Свободные дни не ломают стрик. Допускается до 2 пропусков в неделю. Больничные дни (до 3 за 30 дней) также защищают стрик."
-        :"Your streak counts consecutive days following your schedule. Free days don't break it. Up to 2 missed workout days per week are tolerated. Sick days (up to 3 per 30 days) also protect your streak."
+        ?"Стрик считает дни, когда вы следуете своему расписанию. Свободные дни не ломают стрик. Допускается до 2 пропусков в неделю. Дни отдыха также защищают стрик."
+        :"Your streak counts consecutive days following your schedule. Free days don't break it. Up to 2 missed workout days per week are tolerated. Rest days also protect your streak."
       }</p>
     </div>
 
@@ -112,8 +87,8 @@ export function RestTab({c,t,lang,todayActivity,onLogRest,onUndoRest,onLogSick,o
           <p style={{fontSize:11,color:c.textSecondary}}>{isRu?"Текущий стрик":"Current Streak"}</p>
         </div>
         <div style={{flex:1,background:c.bg,borderRadius:10,padding:"12px 10px",textAlign:"center"}}>
-          <p style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:900,color:c.textPrimary}}>{sickDaysLog.length}</p>
-          <p style={{fontSize:11,color:c.textSecondary}}>{isRu?"Больничные":"Sick Days"}</p>
+          <p style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:900,color:c.textPrimary}}>{ratio}</p>
+          <p style={{fontSize:11,color:c.textSecondary}}>{isRu?"Отдых:Трен.":"Rest:Work"}</p>
         </div>
       </div>
     </div>

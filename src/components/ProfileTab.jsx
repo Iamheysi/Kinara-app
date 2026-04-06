@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { Ic } from '../icons.jsx';
+import { KIcon } from '../brandedIcons.jsx';
 import { StatCard } from './StatCard.jsx';
 import { calcStreak, calcConsistency, localDateStr } from '../utils.js';
 
-export function ProfileTab({c,t,lang,sessions,restDaysLog,sickDaysLog,schedule,plans,profileName,setProfileName,profileBio,setProfileBio,profileGoal,setProfileGoal,profilePhoto,setProfilePhoto,photoInputRef,showToast,achievements,onOpenAchievements}){
+export function ProfileTab({c,t,lang,sessions,restDaysLog,schedule,plans,profileName,setProfileName,profileBio,setProfileBio,profileGoal,setProfileGoal,profilePhoto,setProfilePhoto,photoInputRef,showToast,achievements,onOpenAchievements}){
   const [editing,setEditing]=useState(false);const [draftName,setDraftName]=useState(profileName);const [draftBio,setDraftBio]=useState(profileBio);const [draftGoal,setDraftGoal]=useState(profileGoal);
   const [showMiniProfile,setShowMiniProfile]=useState(false);
   const [cropPreview,setCropPreview]=useState(null);
   const isRu=lang==="ru";
-  const streak=calcStreak(sessions,restDaysLog,schedule,sickDaysLog);const totalVol=sessions.reduce((a,s)=>a+s.totalVolume,0);
+  const streak=calcStreak(sessions,restDaysLog,schedule);const totalVol=sessions.reduce((a,s)=>a+s.totalVolume,0);
   const exPRs={};sessions.forEach(s=>s.exercises.forEach(ex=>{const max=Math.max(...ex.sets.map(s2=>parseFloat(s2.weight)||0),0);if(max>0&&(!exPRs[ex.name]||max>exPRs[ex.name]))exPRs[ex.name]=max;}));
   const exFreq={};sessions.forEach(s=>s.exercises.forEach(ex=>{exFreq[ex.name]=(exFreq[ex.name]||0)+1;}));
   const topEx=Object.entries(exFreq).sort((a,b)=>b[1]-a[1]).slice(0,5);
@@ -104,7 +105,7 @@ export function ProfileTab({c,t,lang,sessions,restDaysLog,sickDaysLog,schedule,p
         </div>
       </div>
       <div style={{display:"flex",gap:6,marginBottom:12}}>
-        {achPreview.map(a=>(<div key={a.id} title={a.label} style={{width:38,height:38,borderRadius:10,background:a.earned?c.primaryDim:c.border,border:`1px solid ${a.earned?c.primary+"44":c.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,opacity:a.earned?1:0.3,transition:"opacity 0.2s"}}>{a.icon}</div>))}
+        {achPreview.map(a=>{const I=KIcon[a.icon];return(<div key={a.id} title={a.label} style={{width:38,height:38,borderRadius:10,background:a.earned?c.primaryDim:c.border,border:`1px solid ${a.earned?c.primary+"44":c.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,opacity:a.earned?1:0.3,transition:"opacity 0.2s"}}>{I?<I color={a.earned?c.primary:c.textMuted} size={18}/>:a.icon}</div>);})}
         {achList.length>8&&<div style={{width:38,height:38,borderRadius:10,background:c.border,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:c.textMuted,fontWeight:600}}>+{achList.length-8}</div>}
       </div>
       <div style={{height:4,background:c.border,borderRadius:2,overflow:"hidden"}}>
