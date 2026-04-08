@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Ic } from '../icons.jsx';
+import { KIcon } from '../brandedIcons.jsx';
 import { MUSCLE_GROUP_COLORS, MUSCLE_GROUP_EMOJI } from '../constants.js';
 
 export function LogTab({c,t,activeWorkout,setActiveWorkout,plans,onStart,checkSet,updateSet,finishWorkout,allSetsDone,formatTime,fmtMin,todayActivity,defaultPlanId,theme}){
@@ -150,13 +151,16 @@ export function LogTab({c,t,activeWorkout,setActiveWorkout,plans,onStart,checkSe
                 {/* Exercise Header */}
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:allExDone?0:8}}>
                   <div style={{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0}}>
+                    <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:18,height:18,flexShrink:0,color:allExDone?c.success:isActive?gc.accent:c.textMuted,transition:"color 0.2s"}}>
+                      {allExDone?Ic.check:<KIcon.dumbbell color={isActive?gc.accent:c.textMuted} size={16}/>}
+                    </span>
                     <span style={{
                       fontFamily:"'Barlow Condensed',sans-serif",fontSize:17,fontWeight:700,
                       color:isActive?gc.accent:allExDone?c.success:c.textSecondary,
                       textDecoration:allExDone?"line-through":"none",
                     }}>{ex.name}</span>
                     {isActive&&<span style={{fontSize:9,background:gc.dim,color:gc.accent,padding:"2px 8px",borderRadius:20,fontWeight:800,letterSpacing:1,border:`1px solid ${gc.border}`}}>ACTIVE</span>}
-                    {allExDone&&<span style={{fontSize:9,background:c.successDim,color:c.success,padding:"2px 8px",borderRadius:20,fontWeight:800}}>DONE ✓</span>}
+                    {allExDone&&<span style={{fontSize:9,background:c.successDim,color:c.success,padding:"2px 8px",borderRadius:20,fontWeight:800,display:"inline-flex",alignItems:"center",gap:4}}><span style={{display:"inline-flex"}}>{Ic.check}</span>{t.doneLabel||"DONE"}</span>}
                   </div>
                   <span style={{fontSize:11,color:c.textMuted,fontFamily:"'JetBrains Mono',monospace",flexShrink:0}}>{doneCount}/{ex.sets.length}</span>
                 </div>
