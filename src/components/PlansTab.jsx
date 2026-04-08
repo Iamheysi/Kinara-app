@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { Ic } from '../icons.jsx';
+import { KIcon } from '../brandedIcons.jsx';
 import { DARK, MUSCLE_GROUP_COLORS, MUSCLE_GROUP_EMOJI } from '../constants.js';
 import { getPlanBg } from '../utils.js';
 
@@ -15,7 +16,7 @@ const PRESET_IMAGES=[
 ];
 
 export function PlansTab({c,t,theme,plans,setPlans,onStart,onDeletePlan,showToast}){
-  const [selected,setSelected]=useState(null);const [editMode,setEditMode]=useState(false);const [newExName,setNewExName]=useState("");const [confirmDelDetail,setConfirmDelDetail]=useState(false);const [confirmDelId,setConfirmDelId]=useState(null);
+  const [selected,setSelected]=useState(null);const [editMode,setEditMode]=useState(false);const [newExName,setNewExName]=useState("");const [confirmDelDetail,setConfirmDelDetail]=useState(false);const [confirmDelId,setConfirmDelId]=useState(null);const [showHelp,setShowHelp]=useState(false);
   const [showImagePicker,setShowImagePicker]=useState(false);
   const imgInputRef=useRef(null);
   const isDark=theme==="dark";const pTxt=isDark?"#FFF":c.textPrimary;const pSub=isDark?"rgba(255,255,255,0.5)":c.textSecondary;
@@ -89,7 +90,10 @@ export function PlansTab({c,t,theme,plans,setPlans,onStart,onDeletePlan,showToas
 
       {/* Muscle Group Selector */}
       {editMode&&(<div style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:12,padding:"14px 16px",marginBottom:14}}>
-        <p style={{fontSize:12,fontWeight:600,color:c.textPrimary,marginBottom:10}}>Muscle Groups</p>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+          <p style={{fontSize:12,fontWeight:600,color:c.textPrimary}}>{t.muscleGroupsLabel||"Muscle Groups"}</p>
+          <button onClick={()=>setShowHelp(v=>!v)} aria-label={t.planHelpAria||"How to customize plans"} title={t.planHelpAria||"How to customize plans"} style={{background:"none",border:"none",color:showHelp?c.primary:c.textMuted,cursor:"pointer",padding:2,display:"inline-flex",alignItems:"center",gap:4,fontSize:11,fontFamily:"'DM Sans',sans-serif"}}>{Ic.info}<span>{t.planHelpHowTo||"How it works"}</span></button>
+        </div>
         <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
           {ALL_MUSCLE_GROUPS.map(mg=>{const sel=planMGs.includes(mg);const gc=mgColors[mg]||mgColors.general;return(
             <button key={mg} onClick={()=>toggleMG(mg)} style={{background:sel?gc.dim:"transparent",border:`1.5px solid ${sel?gc.accent:c.border}`,borderRadius:20,padding:"5px 13px",fontSize:12,fontWeight:sel?700:400,color:sel?gc.accent:c.textSecondary,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",gap:5,transition:"all 0.15s"}}>
@@ -97,6 +101,17 @@ export function PlansTab({c,t,theme,plans,setPlans,onStart,onDeletePlan,showToas
             </button>);
           })}
         </div>
+        {showHelp&&(<div style={{background:c.primaryDim,border:`1px solid ${c.primary}33`,borderRadius:10,padding:"12px 14px",marginTop:10,animation:"fadeUp 0.2s ease"}}>
+          <p style={{fontSize:12,fontWeight:700,color:c.primary,marginBottom:8,letterSpacing:0.3}}>{t.planHelpTitle||"How to customize this plan"}</p>
+          <ul style={{listStyle:"none",padding:0,margin:0,display:"flex",flexDirection:"column",gap:6}}>
+            {[t.planHelpMuscleGroups||"Muscle Groups — tap to choose which groups this plan targets. Selected groups appear in each exercise's Group dropdown and color-code the exercise rows.",
+              t.planHelpExerciseName||"Exercise name — type a name and press Enter or + to add it to the plan.",
+              t.planHelpGroup||"Group — assign each exercise to one of the plan's muscle groups (or General). Drives color-coding and progress tracking.",
+              t.planHelpSetsReps||"Sets / Reps / Rest(s) — number of working sets, reps per set, and seconds of rest between sets. Rest is used by the rest timer during a workout.",
+              t.planHelpSave||"Press Save (top right) to keep changes, then ▶ Start Workout to begin a logged session."
+            ].map((line,i)=>(<li key={i} style={{fontSize:11.5,color:c.textSecondary,lineHeight:1.6,paddingLeft:14,position:"relative"}}><span style={{position:"absolute",left:0,top:0,color:c.primary,fontWeight:700}}>•</span>{line}</li>))}
+          </ul>
+        </div>)}
       </div>)}
       {!editMode&&planMGs.length>0&&(<div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
         {planMGs.map(mg=>{const gc=mgColors[mg]||mgColors.general;return(
@@ -106,8 +121,8 @@ export function PlansTab({c,t,theme,plans,setPlans,onStart,onDeletePlan,showToas
         })}
       </div>)}
 
-      {plan.exercises.map((ex,i)=>{const exMGColor=mgColors[ex.muscleGroup]||mgColors.general;return(<div key={ex.id} style={{background:c.card,border:`1px solid ${c.border}`,borderLeft:`3px solid ${exMGColor.accent}`,borderRadius:"0 11px 11px 0",padding:"12px 15px",marginBottom:7,display:"flex",alignItems:"center",gap:10}}><div style={{width:22,height:22,borderRadius:6,background:exMGColor.dim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:exMGColor.accent,fontWeight:700,flexShrink:0}}>{i+1}</div><div style={{flex:1}}><div style={{display:"flex",alignItems:"center",gap:6}}><p style={{fontSize:13,fontWeight:500,color:c.textPrimary}}>{ex.name}</p>{ex.muscleGroup&&!editMode&&<span style={{fontSize:9,color:exMGColor.accent,background:exMGColor.dim,padding:"1px 6px",borderRadius:8,fontWeight:600}}>{ex.muscleGroup}</span>}</div>{editMode?(<div style={{display:"flex",gap:7,marginTop:5,alignItems:"center",flexWrap:"wrap"}}>
-        <label style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:c.textSecondary}}>Group:<select value={ex.muscleGroup||'general'} onChange={e=>updEx(ex.id,'muscleGroup',e.target.value)} style={{background:c.inputBg,border:`1px solid ${c.border}`,borderRadius:5,padding:"3px 5px",color:c.textPrimary,fontSize:11,fontFamily:"'DM Sans',sans-serif"}}>{[...planMGs,...(planMGs.includes(ex.muscleGroup||'general')?[]:[(ex.muscleGroup||'general')])].map(mg=><option key={mg} value={mg}>{mg.charAt(0).toUpperCase()+mg.slice(1)}</option>)}<option value="general">General</option></select></label>
+      {plan.exercises.map((ex,i)=>{const exMGColor=mgColors[ex.muscleGroup]||mgColors.general;const groupOpts=Array.from(new Set([...planMGs,'general',ex.muscleGroup||'general']));return(<div key={ex.id} style={{background:c.card,border:`1px solid ${c.border}`,borderLeft:`3px solid ${exMGColor.accent}`,borderRadius:"0 11px 11px 0",padding:"12px 15px",marginBottom:7,display:"flex",alignItems:"center",gap:10}}><div style={{width:22,height:22,borderRadius:6,background:exMGColor.dim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:exMGColor.accent,fontWeight:700,flexShrink:0}}>{i+1}</div><div style={{flex:1}}><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{display:"inline-flex",alignItems:"center",color:exMGColor.accent,flexShrink:0}}><KIcon.dumbbell color={exMGColor.accent} size={14}/></span><p style={{fontSize:13,fontWeight:500,color:c.textPrimary}}>{ex.name}</p>{ex.muscleGroup&&!editMode&&<span style={{fontSize:9,color:exMGColor.accent,background:exMGColor.dim,padding:"1px 6px",borderRadius:8,fontWeight:600}}>{ex.muscleGroup}</span>}</div>{editMode?(<div style={{display:"flex",gap:7,marginTop:5,alignItems:"center",flexWrap:"wrap"}}>
+        <label style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:c.textSecondary}}>Group:<select value={ex.muscleGroup||'general'} onChange={e=>updEx(ex.id,'muscleGroup',e.target.value)} style={{background:c.inputBg,border:`1px solid ${c.border}`,borderRadius:5,padding:"3px 5px",color:c.textPrimary,fontSize:11,fontFamily:"'DM Sans',sans-serif"}}>{groupOpts.map(mg=><option key={mg} value={mg}>{mg.charAt(0).toUpperCase()+mg.slice(1)}</option>)}</select></label>
         {[["sets","Sets",1,10],["reps","Reps",1,30],["rest","Rest(s)",15,300]].map(([field,label,min,max])=>(<label key={field} style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:c.textSecondary}}>{label}:<input type="number" min={min} max={max} value={ex[field]} onChange={e=>updEx(ex.id,field,e.target.value)} style={{width:46,background:c.inputBg,border:`1px solid ${c.border}`,borderRadius:5,padding:"3px 5px",color:c.textPrimary,fontSize:11,fontFamily:"'JetBrains Mono',monospace",textAlign:"center"}}/></label>))}</div>):(<p style={{fontSize:11,color:c.textSecondary,marginTop:2}}>{ex.sets} × {ex.reps} reps · {ex.rest}s rest</p>)}</div>{editMode&&<button onClick={()=>rmEx(ex.id)} style={{background:"none",border:"none",color:"#B05050",cursor:"pointer",padding:"4px"}}>{Ic.trash}</button>}</div>);})}
       {editMode&&(<div style={{display:"flex",gap:8,marginTop:7}}><input value={newExName} onChange={e=>setNewExName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addEx()} placeholder="Exercise name…" style={{flex:1,background:c.inputBg,border:`1px solid ${c.borderMid}`,borderRadius:9,padding:"10px 13px",color:c.textPrimary,fontSize:13,fontFamily:"'DM Sans',sans-serif"}}/><button onClick={addEx} style={{background:c.primary,color:"#fff",border:"none",borderRadius:9,padding:"10px 15px",cursor:"pointer"}}>{Ic.plus}</button></div>)}
     </div>);
