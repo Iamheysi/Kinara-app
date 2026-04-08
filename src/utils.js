@@ -6,11 +6,12 @@ export const localDateStr=(d=new Date())=>`${d.getFullYear()}-${String(d.getMont
  * Schedule-based streak calculation.
  * A streak counts consecutive days where the user followed their schedule:
  * - Workout days (schedule has a plan ID): must have a logged workout
- * - Free days (schedule is null): automatically count
+ * - Free days (schedule is null): count only if adjacent to logged activity
  * - Rest days logged explicitly: always count
  * - Extra rest tolerance: up to 2 unscheduled rest/free days per week without breaking
  *
  * If the user misses a scheduled workout day and doesn't log rest, streak breaks.
+ * Free days only count if the user has recent activity (within 3 days).
  */
 export const calcStreak=(sessions,restDaysLog=[],schedule={})=>{
   const today=new Date();today.setHours(0,0,0,0);
@@ -21,6 +22,7 @@ export const calcStreak=(sessions,restDaysLog=[],schedule={})=>{
   const startOff=hasToday?0:1;
   let streak=0;
   let weekMissedCount=0;
+  let daysSinceActivity=0;
   for(let i=startOff;i<365;i++){
     const d=new Date(today);d.setDate(today.getDate()-i);
     const ds=localDateStr(d);
@@ -30,10 +32,15 @@ export const calcStreak=(sessions,restDaysLog=[],schedule={})=>{
     const didRest=restDates.has(ds);
     if(i>startOff&&(i-startOff)%7===0)weekMissedCount=0;
     if(didWorkout||didRest){
+      daysSinceActivity=0;
       streak++;
     } else if(scheduledPlan===null||scheduledPlan===undefined){
+      daysSinceActivity++;
+      if(daysSinceActivity>3)break;
       streak++;
     } else {
+      daysSinceActivity++;
+      if(daysSinceActivity>3)break;
       weekMissedCount++;
       if(weekMissedCount<=2){
         streak++;

@@ -1,7 +1,9 @@
 import { useState, useRef } from 'react';
 import { Ic } from '../icons.jsx';
-import { DARK } from '../constants.js';
+import { DARK, MUSCLE_GROUP_COLORS, MUSCLE_GROUP_EMOJI } from '../constants.js';
 import { getPlanBg } from '../utils.js';
+
+const ALL_MUSCLE_GROUPS=['chest','back','shoulders','triceps','biceps','legs','glutes','core'];
 
 const PRESET_IMAGES=[
   {id:"chest",label:"Chest",gradient:"linear-gradient(135deg,#8B4513 0%,#A0522D 30%,#CD853F 70%,#D2691E 100%)"},
@@ -46,7 +48,10 @@ export function PlansTab({c,t,theme,plans,setPlans,onStart,onDeletePlan,showToas
   if(selected!==null){
     const plan=plans[selected];if(!plan){setSelected(null);return null;}
     const acc=accentOf(plan);
-    const addEx=()=>{if(!newExName.trim())return;setPlans(p=>p.map((x,i)=>i===selected?{...x,exercises:[...x.exercises,{id:Date.now(),name:newExName.trim(),sets:3,reps:10,rest:60}]}:x));setNewExName("");};
+    const planMGs=plan.muscleGroups||[];
+    const mgColors=MUSCLE_GROUP_COLORS[isDark?"dark":"light"];
+    const toggleMG=(mg)=>setPlans(p=>p.map((x,i)=>i===selected?{...x,muscleGroups:x.muscleGroups?.includes(mg)?x.muscleGroups.filter(g=>g!==mg):[...(x.muscleGroups||[]),mg]}:x));
+    const addEx=()=>{if(!newExName.trim())return;const defaultMG=planMGs[0]||'general';setPlans(p=>p.map((x,i)=>i===selected?{...x,exercises:[...x.exercises,{id:Date.now(),name:newExName.trim(),muscleGroup:defaultMG,sets:3,reps:10,rest:60}]}:x));setNewExName("");};
     const rmEx=eid=>setPlans(p=>p.map((x,i)=>i===selected?{...x,exercises:x.exercises.filter(e=>e.id!==eid)}:x));
     const updEx=(eid,field,val)=>setPlans(p=>p.map((x,i)=>i===selected?{...x,exercises:x.exercises.map(e=>e.id===eid?{...e,[field]:Number(val)||val}:e)}:x));
     const cardBg=plan.image?`url(${plan.image}) center/cover`:plan.presetBg||getPlanBg(plan.panel,isDark);
@@ -82,33 +87,59 @@ export function PlansTab({c,t,theme,plans,setPlans,onStart,onDeletePlan,showToas
         {plan.image&&<button onClick={()=>setPlans(p=>p.map((x,i)=>i===selected?{...x,image:null,presetBg:null}:x))} style={{width:"100%",marginTop:6,background:"none",border:`1px solid ${c.border}`,borderRadius:8,padding:"6px",fontSize:11,color:c.textMuted,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{t.removeImage||"Remove Image"}</button>}
       </div>)}
 
-      {plan.exercises.map((ex,i)=>(<div key={ex.id} style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:11,padding:"12px 15px",marginBottom:7,display:"flex",alignItems:"center",gap:10}}><div style={{width:22,height:22,borderRadius:6,background:c.primaryDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:c.primary,fontWeight:700,flexShrink:0}}>{i+1}</div><div style={{flex:1}}><p style={{fontSize:13,fontWeight:500,color:c.textPrimary}}>{ex.name}</p>{editMode?(<div style={{display:"flex",gap:7,marginTop:5,alignItems:"center",flexWrap:"wrap"}}>{[["sets","Sets",1,10],["reps","Reps",1,30],["rest","Rest(s)",15,300]].map(([field,label,min,max])=>(<label key={field} style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:c.textSecondary}}>{label}:<input type="number" min={min} max={max} value={ex[field]} onChange={e=>updEx(ex.id,field,e.target.value)} style={{width:46,background:c.inputBg,border:`1px solid ${c.border}`,borderRadius:5,padding:"3px 5px",color:c.textPrimary,fontSize:11,fontFamily:"'JetBrains Mono',monospace",textAlign:"center"}}/></label>))}</div>):(<p style={{fontSize:11,color:c.textSecondary,marginTop:2}}>{ex.sets} × {ex.reps} reps · {ex.rest}s rest</p>)}</div>{editMode&&<button onClick={()=>rmEx(ex.id)} style={{background:"none",border:"none",color:"#B05050",cursor:"pointer",padding:"4px"}}>{Ic.trash}</button>}</div>))}
+      {/* Muscle Group Selector */}
+      {editMode&&(<div style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:12,padding:"14px 16px",marginBottom:14}}>
+        <p style={{fontSize:12,fontWeight:600,color:c.textPrimary,marginBottom:10}}>Muscle Groups</p>
+        <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
+          {ALL_MUSCLE_GROUPS.map(mg=>{const sel=planMGs.includes(mg);const gc=mgColors[mg]||mgColors.general;return(
+            <button key={mg} onClick={()=>toggleMG(mg)} style={{background:sel?gc.dim:"transparent",border:`1.5px solid ${sel?gc.accent:c.border}`,borderRadius:20,padding:"5px 13px",fontSize:12,fontWeight:sel?700:400,color:sel?gc.accent:c.textSecondary,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",gap:5,transition:"all 0.15s"}}>
+              <span style={{fontSize:13}}>{MUSCLE_GROUP_EMOJI[mg]||'🏋️'}</span>{mg.charAt(0).toUpperCase()+mg.slice(1)}
+            </button>);
+          })}
+        </div>
+      </div>)}
+      {!editMode&&planMGs.length>0&&(<div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
+        {planMGs.map(mg=>{const gc=mgColors[mg]||mgColors.general;return(
+          <span key={mg} style={{background:gc.dim,border:`1px solid ${gc.border}`,borderRadius:16,padding:"3px 10px",fontSize:11,fontWeight:600,color:gc.accent,display:"flex",alignItems:"center",gap:4}}>
+            <span style={{fontSize:11}}>{MUSCLE_GROUP_EMOJI[mg]||'🏋️'}</span>{mg.charAt(0).toUpperCase()+mg.slice(1)}
+          </span>);
+        })}
+      </div>)}
+
+      {plan.exercises.map((ex,i)=>{const exMGColor=mgColors[ex.muscleGroup]||mgColors.general;return(<div key={ex.id} style={{background:c.card,border:`1px solid ${c.border}`,borderLeft:`3px solid ${exMGColor.accent}`,borderRadius:"0 11px 11px 0",padding:"12px 15px",marginBottom:7,display:"flex",alignItems:"center",gap:10}}><div style={{width:22,height:22,borderRadius:6,background:exMGColor.dim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:exMGColor.accent,fontWeight:700,flexShrink:0}}>{i+1}</div><div style={{flex:1}}><div style={{display:"flex",alignItems:"center",gap:6}}><p style={{fontSize:13,fontWeight:500,color:c.textPrimary}}>{ex.name}</p>{ex.muscleGroup&&!editMode&&<span style={{fontSize:9,color:exMGColor.accent,background:exMGColor.dim,padding:"1px 6px",borderRadius:8,fontWeight:600}}>{ex.muscleGroup}</span>}</div>{editMode?(<div style={{display:"flex",gap:7,marginTop:5,alignItems:"center",flexWrap:"wrap"}}>
+        <label style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:c.textSecondary}}>Group:<select value={ex.muscleGroup||'general'} onChange={e=>updEx(ex.id,'muscleGroup',e.target.value)} style={{background:c.inputBg,border:`1px solid ${c.border}`,borderRadius:5,padding:"3px 5px",color:c.textPrimary,fontSize:11,fontFamily:"'DM Sans',sans-serif"}}>{[...planMGs,...(planMGs.includes(ex.muscleGroup||'general')?[]:[(ex.muscleGroup||'general')])].map(mg=><option key={mg} value={mg}>{mg.charAt(0).toUpperCase()+mg.slice(1)}</option>)}<option value="general">General</option></select></label>
+        {[["sets","Sets",1,10],["reps","Reps",1,30],["rest","Rest(s)",15,300]].map(([field,label,min,max])=>(<label key={field} style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:c.textSecondary}}>{label}:<input type="number" min={min} max={max} value={ex[field]} onChange={e=>updEx(ex.id,field,e.target.value)} style={{width:46,background:c.inputBg,border:`1px solid ${c.border}`,borderRadius:5,padding:"3px 5px",color:c.textPrimary,fontSize:11,fontFamily:"'JetBrains Mono',monospace",textAlign:"center"}}/></label>))}</div>):(<p style={{fontSize:11,color:c.textSecondary,marginTop:2}}>{ex.sets} × {ex.reps} reps · {ex.rest}s rest</p>)}</div>{editMode&&<button onClick={()=>rmEx(ex.id)} style={{background:"none",border:"none",color:"#B05050",cursor:"pointer",padding:"4px"}}>{Ic.trash}</button>}</div>);})}
       {editMode&&(<div style={{display:"flex",gap:8,marginTop:7}}><input value={newExName} onChange={e=>setNewExName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addEx()} placeholder="Exercise name…" style={{flex:1,background:c.inputBg,border:`1px solid ${c.borderMid}`,borderRadius:9,padding:"10px 13px",color:c.textPrimary,fontSize:13,fontFamily:"'DM Sans',sans-serif"}}/><button onClick={addEx} style={{background:c.primary,color:"#fff",border:"none",borderRadius:9,padding:"10px 15px",cursor:"pointer"}}>{Ic.plus}</button></div>)}
     </div>);
   }
 
   return(<div style={{maxWidth:1100,margin:"0 auto"}}>
-    <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",marginBottom:20}}><div><p style={{fontSize:10,color:c.primary,letterSpacing:1.8,textTransform:"uppercase",fontWeight:700,marginBottom:3}}>{t.myPlans}</p><h2 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:38,fontWeight:900,color:c.textPrimary}}>{t.trainingPlans}</h2></div><button onClick={()=>{setPlans(p=>[...p,{id:Date.now(),name:"New Plan",panel:"upper",accent:"clay",warmup:{enabled:true,duration:300},notes:"",exercises:[]}]);setSelected(plans.length);setEditMode(true);}} style={{background:c.primary,color:"#fff",border:"none",borderRadius:10,padding:"10px 18px",fontSize:13,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",boxShadow:`0 3px 12px ${c.primary}44`}}>{t.newPlan}</button></div>
+    <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",marginBottom:20}}><div><p style={{fontSize:10,color:c.primary,letterSpacing:1.8,textTransform:"uppercase",fontWeight:700,marginBottom:3}}>{t.myPlans}</p><h2 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:38,fontWeight:900,color:c.textPrimary}}>{t.trainingPlans}</h2></div><button onClick={()=>{setPlans(p=>[...p,{id:Date.now(),name:"New Plan",panel:"upper",accent:"clay",warmup:{enabled:true,duration:300},notes:"",muscleGroups:[],exercises:[]}]);setSelected(plans.length);setEditMode(true);}} style={{background:c.primary,color:"#fff",border:"none",borderRadius:10,padding:"10px 18px",fontSize:13,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",boxShadow:`0 3px 12px ${c.primary}44`}}>{t.newPlan}</button></div>
     <div className="kb-plans-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:14}}>
-      {plans.map((p,i)=>{const acc=accentOf(p);const isConfirming=confirmDelId===p.id;const cardBg=p.image?`url(${p.image}) center/cover`:p.presetBg||getPlanBg(p.panel,isDark);return(<div key={p.id} className="kb-card-hover" onClick={()=>!isConfirming&&setSelected(i)} style={{background:c.card,border:`1px solid ${isConfirming?"#B05050":c.border}`,borderRadius:16,overflow:"hidden",cursor:isConfirming?"default":"pointer",transition:"all 0.2s",boxShadow:"0 2px 10px rgba(0,0,0,0.08)"}}>
-        <div style={{position:"relative",height:110,background:cardBg,overflow:"hidden"}}>
-          {!p.image&&<svg style={{position:"absolute",right:0,top:0,opacity:isDark?0.08:0.2}} width="160" height="110" viewBox="0 0 160 110"><circle cx="130" cy="55" r="45" stroke={acc} strokeWidth="1" fill="none"/></svg>}
-          <div style={{position:"absolute",inset:0,background:p.image?"linear-gradient(to top,rgba(0,0,0,0.65) 0%,transparent 55%)":isDark?"linear-gradient(to bottom,transparent 20%,rgba(0,0,0,0.75))":"linear-gradient(to bottom,transparent 20%,rgba(0,0,0,0.4))"}}/>
-          <div style={{position:"absolute",bottom:8,left:14,right:14}}>
-            <h3 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:21,fontWeight:900,color:"#fff"}}>{p.name}</h3>
-            {p.notes&&<p style={{fontSize:10.5,color:"rgba(255,255,255,0.6)",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.notes}</p>}
+      {plans.map((p,i)=>{const acc=accentOf(p);const isConfirming=confirmDelId===p.id;const cardBg=p.image?`url(${p.image}) center/cover`:p.presetBg||getPlanBg(p.panel,isDark);const pMGs=p.muscleGroups||[];const mgC=MUSCLE_GROUP_COLORS[isDark?"dark":"light"];const primaryMG=pMGs[0];const primaryEmoji=primaryMG?MUSCLE_GROUP_EMOJI[primaryMG]:'🏋️';return(<div key={p.id} className="kb-card-hover" onClick={()=>!isConfirming&&setSelected(i)} style={{background:c.card,border:`1px solid ${isConfirming?"#B05050":c.border}`,borderRadius:16,overflow:"hidden",cursor:isConfirming?"default":"pointer",transition:"all 0.2s",boxShadow:"0 2px 10px rgba(0,0,0,0.08)"}}>
+        <div style={{position:"relative",height:130,background:cardBg,overflow:"hidden"}}>
+          {!p.image&&<svg style={{position:"absolute",right:0,top:0,opacity:isDark?0.08:0.2}} width="160" height="130" viewBox="0 0 160 130"><circle cx="130" cy="65" r="50" stroke={acc} strokeWidth="1" fill="none"/></svg>}
+          <div style={{position:"absolute",inset:0,background:p.image?"linear-gradient(to top,rgba(0,0,0,0.75) 0%,transparent 55%)":isDark?"linear-gradient(to bottom,transparent 10%,rgba(0,0,0,0.8))":"linear-gradient(to bottom,transparent 10%,rgba(0,0,0,0.45))"}}/>
+          <div style={{position:"absolute",top:10,left:14}}><span style={{fontSize:28}}>{primaryEmoji}</span></div>
+          <div style={{position:"absolute",bottom:10,left:14,right:14}}>
+            <h3 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:23,fontWeight:900,color:"#fff",lineHeight:1.1}}>{p.name}</h3>
+            {pMGs.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:5}}>
+              {pMGs.map(mg=>{const gc=mgC[mg]||mgC.general;return(<span key={mg} style={{fontSize:9.5,fontWeight:700,color:"#fff",background:`${gc.accent}55`,backdropFilter:"blur(4px)",borderRadius:10,padding:"2px 7px",letterSpacing:0.3}}>{mg.charAt(0).toUpperCase()+mg.slice(1)}</span>);})}
+            </div>}
+            {!pMGs.length&&p.notes&&<p style={{fontSize:10.5,color:"rgba(255,255,255,0.6)",marginTop:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.notes}</p>}
           </div>
-          <div style={{position:"absolute",top:7,right:7,width:6,height:6,borderRadius:"50%",background:acc,boxShadow:`0 0 6px ${acc}`}}/>
         </div>
-        <div style={{padding:"10px 14px"}}>
+        <div style={{padding:"12px 14px"}}>
           {isConfirming?(<div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{fontSize:12,color:"#B05050",fontWeight:500}}>{t.confirmDelete}</span><div style={{display:"flex",gap:6}}><button onClick={e=>{e.stopPropagation();onDeletePlan(p.id);setConfirmDelId(null);}} style={{background:"#B05050",color:"#fff",border:"none",borderRadius:7,padding:"5px 13px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Yes</button><button onClick={e=>{e.stopPropagation();setConfirmDelId(null);}} style={{background:c.bg,color:c.textSecondary,border:`1px solid ${c.border}`,borderRadius:7,padding:"5px 10px",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>No</button></div></div>):(
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <p style={{fontSize:11.5,color:c.textSecondary}}>{p.exercises.length} {t.exercises}</p>
-              <div style={{display:"flex",gap:6}}>
-                <button onClick={e=>{e.stopPropagation();onStart(p);}} style={{background:acc,color:"#fff",border:"none",borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",boxShadow:`0 2px 8px ${acc}44`}}>▶</button>
-                <button onClick={e=>{e.stopPropagation();setSelected(i);}} style={{background:c.bg,color:c.textSecondary,border:`1px solid ${c.border}`,borderRadius:7,padding:"5px 10px",fontSize:11.5,cursor:"pointer"}}>{t.editPlan}</button>
-                <button onClick={e=>{e.stopPropagation();setConfirmDelId(p.id);}} style={{background:"none",border:`1px solid ${c.border}`,color:"#B05050",borderRadius:7,padding:"5px 8px",cursor:"pointer",display:"flex",alignItems:"center"}}>{Ic.trash}</button>
+            <div>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                <p style={{fontSize:12,color:c.textSecondary,fontWeight:500}}>{p.exercises.length} {t.exercises}</p>
+                <div style={{display:"flex",gap:5}}>
+                  <button onClick={e=>{e.stopPropagation();setSelected(i);}} style={{background:c.bg,color:c.textSecondary,border:`1px solid ${c.border}`,borderRadius:7,padding:"4px 10px",fontSize:11,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{t.editPlan}</button>
+                  <button onClick={e=>{e.stopPropagation();setConfirmDelId(p.id);}} style={{background:"none",border:`1px solid ${c.border}`,color:"#B05050",borderRadius:7,padding:"4px 8px",cursor:"pointer",display:"flex",alignItems:"center"}}>{Ic.trash}</button>
+                </div>
               </div>
+              <button onClick={e=>{e.stopPropagation();onStart(p);}} style={{width:"100%",background:`linear-gradient(135deg,${acc},${acc}CC)`,color:"#fff",border:"none",borderRadius:10,padding:"10px",fontSize:14,fontWeight:900,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",boxShadow:`0 3px 12px ${acc}44`,display:"flex",alignItems:"center",justifyContent:"center",gap:6,letterSpacing:1}}>▶ {t.startWorkout}</button>
             </div>
           )}
         </div>

@@ -8,7 +8,33 @@ export function LogTab({c,t,activeWorkout,setActiveWorkout,plans,onStart,checkSe
 
   if(!activeWorkout){
     if(todayActivity==="rest")return(<div style={{maxWidth:460,margin:"60px auto",textAlign:"center"}}><div style={{fontSize:48,marginBottom:16}}>🌙</div><p style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:30,fontWeight:900,color:c.textPrimary,marginBottom:8}}>{t.restBlockedMsg}</p><p style={{fontSize:14,color:c.textSecondary}}>{t.restBlockedSub}</p></div>);
-    return(<div style={{maxWidth:500,margin:"56px auto",textAlign:"center"}}><p style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:34,fontWeight:900,color:c.textPrimary,marginBottom:6}}>{t.logWorkout}</p><p style={{fontSize:13,color:c.textSecondary,marginBottom:24}}>{t.selectPlan}</p><div style={{display:"flex",flexDirection:"column",gap:9,marginBottom:20}}>{plans.map(p=>(<div key={p.id} onClick={()=>setSelPlanId(p.id)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:c.card,border:`1.5px solid ${selPlanId===p.id?c.primary:c.border}`,borderRadius:12,padding:"13px 16px",cursor:"pointer",transition:"all 0.15s",boxShadow:selPlanId===p.id?`0 0 0 3px ${c.primary}22`:"none"}}><div><p style={{fontSize:14,fontWeight:600,color:c.textPrimary}}>{p.name}</p><p style={{fontSize:11.5,color:c.textSecondary}}>{p.exercises.length} {t.exercises}</p></div><div style={{width:20,height:20,borderRadius:"50%",border:`2px solid ${selPlanId===p.id?c.primary:c.border}`,background:selPlanId===p.id?c.primary:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",flexShrink:0,transition:"all 0.15s"}}>{selPlanId===p.id&&Ic.check}</div></div>))}</div><button onClick={()=>{const p=plans.find(x=>x.id===selPlanId);if(p)onStart(p);}} style={{background:c.primary,color:"#fff",border:"none",borderRadius:12,padding:"13px 42px",fontSize:15,fontWeight:900,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",boxShadow:`0 4px 16px ${c.primary}44`}}>▶ {t.startWorkout}</button></div>);
+    const isDarkPicker=theme==="dark";const mgCPicker=MUSCLE_GROUP_COLORS[isDarkPicker?"dark":"light"];
+    return(<div style={{maxWidth:560,margin:"40px auto"}}>
+      <div style={{textAlign:"center",marginBottom:24}}>
+        <p style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:34,fontWeight:900,color:c.textPrimary,marginBottom:6}}>{t.logWorkout}</p>
+        <p style={{fontSize:13,color:c.textSecondary}}>{t.selectPlan}</p>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:24}}>
+        {plans.map(p=>{const pMGs=p.muscleGroups||[];const primaryEmoji=pMGs[0]?MUSCLE_GROUP_EMOJI[pMGs[0]]:'🏋️';const isSel=selPlanId===p.id;return(
+          <div key={p.id} className="kb-card-hover" onClick={()=>setSelPlanId(p.id)} style={{background:c.card,border:`1.5px solid ${isSel?c.primary:c.border}`,borderRadius:14,padding:"16px 18px",cursor:"pointer",transition:"all 0.15s",boxShadow:isSel?`0 0 0 3px ${c.primary}22`:"none"}}>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              <div style={{width:44,height:44,borderRadius:12,background:isSel?c.primaryDim:c.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0,border:`1px solid ${isSel?c.primary+"33":c.border}`,transition:"all 0.15s"}}>{primaryEmoji}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <p style={{fontSize:15,fontWeight:700,color:c.textPrimary,marginBottom:3}}>{p.name}</p>
+                <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                  <span style={{fontSize:11,color:c.textSecondary}}>{p.exercises.length} {t.exercises}</span>
+                  {pMGs.length>0&&pMGs.map(mg=>{const gc=mgCPicker[mg]||mgCPicker.general;return(
+                    <span key={mg} style={{fontSize:9,fontWeight:700,color:gc.accent,background:gc.dim,padding:"1px 6px",borderRadius:8}}>{mg.charAt(0).toUpperCase()+mg.slice(1)}</span>
+                  );})}
+                </div>
+              </div>
+              <div style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${isSel?c.primary:c.border}`,background:isSel?c.primary:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",flexShrink:0,transition:"all 0.15s"}}>{isSel&&Ic.check}</div>
+            </div>
+          </div>);
+        })}
+      </div>
+      <button onClick={()=>{const p=plans.find(x=>x.id===selPlanId);if(p)onStart(p);}} style={{width:"100%",maxWidth:340,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:`linear-gradient(135deg,${c.primary},${c.primary}CC)`,color:"#fff",border:"none",borderRadius:12,padding:"14px 42px",fontSize:16,fontWeight:900,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",boxShadow:`0 4px 16px ${c.primary}44`,letterSpacing:1}}>▶ {t.startWorkout}</button>
+    </div>);
   }
 
   const w=activeWorkout;
