@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 const FAQ_EN=[
   {q:"How do I create a training plan?",a:"Go to the Plans tab and click '+ New Plan'. Give it a name, add exercises with sets/reps/rest times, and optionally add a card image."},
-  {q:"How does the streak work?",a:"Your streak counts consecutive days with any logged activity — either a workout or a rest day. If you miss a day without logging anything, the streak resets. Enable 'Auto Rest Days' in Settings to automatically protect your streak."},
+  {q:"How does the streak work?",a:"Your streak counts consecutive days you honored your schedule. On a scheduled workout day, log a workout (or a rest day to bail on it) and the day counts. Free days and scheduled rest days count automatically — no interaction required. Miss a scheduled workout without logging anything and the streak resets."},
   {q:"What is the Training Load section?",a:"Training Load uses the Banister model to track your fatigue (ATL), fitness base (CTL), and freshness (TSB). It helps you know when to push hard and when to take a deload."},
   {q:"Can I export my data?",a:"Yes! Go to Settings → Data → Export Data. This downloads all your sessions, plans, and profile info as a JSON file."},
   {q:"How do I change the language?",a:"Open Settings (gear icon or burger menu) and switch between English and Russian."},
@@ -10,7 +10,7 @@ const FAQ_EN=[
 ];
 const FAQ_RU=[
   {q:"Как создать план тренировок?",a:"Перейдите на вкладку «Планы» и нажмите «+ Новый план». Дайте ему название, добавьте упражнения с подходами, повторениями и временем отдыха, а также при желании добавьте изображение карточки."},
-  {q:"Как работает серия дней?",a:"Серия считает последовательные дни с любой записанной активностью — тренировкой или днём отдыха. Если вы пропустите день без записи, серия сбрасывается. Включите «Авто-отдых» в настройках, чтобы автоматически защитить серию."},
+  {q:"Как работает серия дней?",a:"Серия — это подряд идущие дни, когда вы следовали своему расписанию. В запланированный тренировочный день нужно записать тренировку (или день отдыха, чтобы «отмениться»), и день засчитается. Свободные дни и запланированные дни отдыха засчитываются автоматически — ничего делать не нужно. Пропустили запланированную тренировку без записи — серия сбрасывается."},
   {q:"Что такое «Тренировочная нагрузка»?",a:"Этот раздел использует модель Банистера для отслеживания усталости (ATL), фитнес-базы (CTL) и свежести (TSB). Это помогает понять, когда тренироваться интенсивно, а когда сделать разгрузку."},
   {q:"Могу ли я экспортировать данные?",a:"Да! Перейдите в Настройки → Данные → Экспорт. Это скачает все ваши тренировки, планы и профиль в формате JSON."},
   {q:"Как поменять язык?",a:"Откройте Настройки (значок шестерёнки или боковое меню) и переключитесь между English и Русский."},

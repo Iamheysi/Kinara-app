@@ -1,7 +1,7 @@
 import { RECOVERY_FACTS } from '../constants.js';
 import { KIcon } from '../brandedIcons.jsx';
 
-export function RestTab({c,t,lang,todayActivity,onLogRest,onUndoRest,schedule={},activeWorkout,onOverrideRest,autoRestEnabled,setAutoRestEnabled,restDaysLog,sessions,streak}){
+export function RestTab({c,t,lang,todayActivity,onLogRest,onUndoRest,activeWorkout,onOverrideRest,restDaysLog,sessions,streak}){
   const fact=RECOVERY_FACTS[new Date().getDate()%RECOVERY_FACTS.length];
   const isRu=lang==="ru";
   const totalRest=restDaysLog?restDaysLog.length:0;
@@ -53,18 +53,9 @@ export function RestTab({c,t,lang,todayActivity,onLogRest,onUndoRest,schedule={}
         <p style={{fontSize:12,fontWeight:700,color:c.primary,letterSpacing:0.5}}>{isRu?"КАК РАБОТАЕТ СТРИК":"HOW STREAKS WORK"}</p>
       </div>
       <p style={{fontSize:12,color:c.textSecondary,lineHeight:1.6}}>{isRu
-        ?"Стрик считает дни, когда вы следуете своему расписанию. Свободные дни не ломают стрик. Допускается до 2 пропусков в неделю. Дни отдыха также защищают стрик."
-        :"Your streak counts consecutive days following your schedule. Free days don't break it. Up to 2 missed workout days per week are tolerated. Rest days also protect your streak."
+        ?"Стрик — это подряд идущие дни, когда вы следовали своему расписанию. В запланированные тренировочные дни нужно записать тренировку (или день отдыха, чтобы «отмениться»). Свободные дни и запланированные дни отдыха засчитываются автоматически — ничего делать не нужно. Пропустили запланированную тренировку без записи — стрик сбрасывается."
+        :"Your streak counts consecutive days you honored your schedule. On scheduled workout days, log a workout (or a rest day to bail). Free days and scheduled rest days count automatically — nothing to do. Miss a scheduled workout without logging anything and the streak resets."
       }</p>
-    </div>
-
-    {/* Auto Rest Days Toggle */}
-    <div style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:13,padding:"16px 18px",marginTop:14,display:"flex",alignItems:"center",justifyContent:"space-between",gap:14}}>
-      <div style={{flex:1}}>
-        <p style={{fontSize:14,fontWeight:600,color:c.textPrimary,marginBottom:2}}>{isRu?"Авто дни отдыха":"Auto Rest Days"}</p>
-        <p style={{fontSize:12,color:c.textSecondary,lineHeight:1.4}}>{isRu?"Автоматически засчитывать пропущенные дни как дни отдыха.":"Automatically count missed days as rest days."}</p>
-      </div>
-      <button onClick={()=>setAutoRestEnabled(!autoRestEnabled)} style={{width:42,height:24,borderRadius:12,background:autoRestEnabled?c.primary:c.border,border:"none",cursor:"pointer",position:"relative",transition:"background 0.2s",flexShrink:0}}><div style={{width:18,height:18,borderRadius:9,background:"#fff",position:"absolute",top:3,left:autoRestEnabled?21:3,transition:"left 0.2s",boxShadow:"0 1px 3px rgba(0,0,0,0.2)"}}/></button>
     </div>
 
     {/* Rest Day Streak */}
