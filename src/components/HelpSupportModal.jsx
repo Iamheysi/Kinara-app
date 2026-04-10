@@ -45,7 +45,7 @@ export function HelpSupportModal({open,onClose,c,lang}){
         <p style={{fontSize:12,color:c.primary,fontFamily:"'JetBrains Mono',monospace"}}>kinarasupport@gmail.com</p>
         <p style={{fontSize:11,color:c.textMuted,marginTop:8}}>{isRu?"Мы обычно отвечаем в течение 24 часов.":"We typically respond within 24 hours."}</p>
       </div>
-      <p style={{fontSize:10,color:c.textMuted,textAlign:"center",marginTop:16}}>Kinara v0.7.1</p>
+      <p style={{fontSize:10,color:c.textMuted,textAlign:"center",marginTop:16}}>Kinara v0.7.2</p>
     </div>
   </div>);
 }
