@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Ic } from '../icons.jsx';
 
-export function SettingsModal({open,onClose,theme,setTheme,lang,setLang,onExport,onImport,autoRestEnabled,setAutoRestEnabled,reminderEnabled,setReminderEnabled,reminderTime,setReminderTime,onOpenPrivacy,onOpenTerms,onResetProgress,onClearData,onDeleteAccount,c,t}){
+export function SettingsModal({open,onClose,theme,setTheme,lang,setLang,onExport,onImport,reminderEnabled,setReminderEnabled,reminderTime,setReminderTime,onOpenPrivacy,onOpenTerms,onResetProgress,onClearData,onDeleteAccount,c,t}){
   const [confirmReset,setConfirmReset]=useState(null); // "reset"|"clear"|"delete"
   if(!open)return null;
   const isRu=lang==="ru";
@@ -44,10 +44,6 @@ export function SettingsModal({open,onClose,theme,setTheme,lang,setLang,onExport
         <span style={{display:"inline-block",marginTop:6,fontSize:10,fontWeight:600,color:c.textMuted,background:c.border,padding:"3px 10px",borderRadius:12}}>{isRu?"Скоро":"Coming Soon"}</span>
       </div>
     </div>
-
-    <div style={{height:1,background:c.border,margin:"14px 0"}}/>
-    <p style={{fontSize:9.5,color:c.textMuted,letterSpacing:1.8,fontWeight:700,textTransform:"uppercase",marginBottom:9,paddingLeft:2}}>{isRu?"Отдых":"Rest Days"}</p>
-    <Toggle icon={Ic.rest} label={isRu?"Авто-отдых":"Auto Rest Days"} desc={isRu?"Автоматически считать пропущенные дни днями отдыха":"Automatically count missed days as rest days"} checked={autoRestEnabled} onChange={setAutoRestEnabled}/>
 
     <div style={{height:1,background:c.border,margin:"14px 0"}}/>
     <p style={{fontSize:9.5,color:c.textMuted,letterSpacing:1.8,fontWeight:700,textTransform:"uppercase",marginBottom:9,paddingLeft:2}}>{t.helpSupport}</p>

@@ -3,50 +3,46 @@ export const DOW_SHORT=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 export const localDateStr=(d=new Date())=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
 /**
- * Schedule-based streak calculation.
- * A streak counts consecutive days where the user followed their schedule:
- * - Workout days (schedule has a plan ID): must have a logged workout
- * - Free days (schedule is null): count only if adjacent to logged activity
- * - Rest days logged explicitly: always count
- * - Extra rest tolerance: up to 2 unscheduled rest/free days per week without breaking
+ * Schedule-adherence streak.
  *
- * If the user misses a scheduled workout day and doesn't log rest, streak breaks.
- * Free days only count if the user has recent activity (within 3 days).
+ * The streak counts consecutive days the user honored their schedule:
+ * - Scheduled workout day (schedule[dow] is a plan ID): requires a logged
+ *   workout OR a logged rest day. A rest log is the explicit "I'm bailing
+ *   on today's workout" escape hatch. No log on a past scheduled workout
+ *   day → streak resets.
+ * - Scheduled rest day (schedule[dow] === "rest"): auto-counts.
+ * - Free day (schedule[dow] is null/undefined): auto-counts.
+ * - Today is a grace day: if today is a scheduled workout with no log yet,
+ *   the walk skips today (no count, no break) and continues from yesterday.
+ *   Free/rest days still auto-count today.
+ * - Never walk before the user's first log. If the user has never logged
+ *   anything, the streak is 0 — no phantom grace window.
  */
 export const calcStreak=(sessions,restDaysLog=[],schedule={})=>{
-  const today=new Date();today.setHours(0,0,0,0);
-  const todayS=localDateStr(today);
   const workoutDates=new Set(sessions.map(s=>s.date));
   const restDates=new Set(restDaysLog);
-  const hasToday=workoutDates.has(todayS)||restDates.has(todayS);
-  const startOff=hasToday?0:1;
+  if(workoutDates.size===0&&restDates.size===0)return 0;
+  const allDates=[...workoutDates,...restDates].sort();
+  const earliestLog=allDates[0];
+  const today=new Date();today.setHours(0,0,0,0);
   let streak=0;
-  let weekMissedCount=0;
-  let daysSinceActivity=0;
-  for(let i=startOff;i<365;i++){
+  for(let i=0;i<365;i++){
     const d=new Date(today);d.setDate(today.getDate()-i);
     const ds=localDateStr(d);
-    const dow=d.getDay();
-    const scheduledPlan=schedule[dow];
-    const didWorkout=workoutDates.has(ds);
-    const didRest=restDates.has(ds);
-    if(i>startOff&&(i-startOff)%7===0)weekMissedCount=0;
-    if(didWorkout||didRest){
-      daysSinceActivity=0;
-      streak++;
-    } else if(scheduledPlan===null||scheduledPlan===undefined){
-      daysSinceActivity++;
-      if(daysSinceActivity>3)break;
-      streak++;
-    } else {
-      daysSinceActivity++;
-      if(daysSinceActivity>3)break;
-      weekMissedCount++;
-      if(weekMissedCount<=2){
+    if(ds<earliestLog)break;
+    const scheduled=schedule[d.getDay()];
+    const isSchedWorkout=typeof scheduled==='number';
+    const hasAnyLog=workoutDates.has(ds)||restDates.has(ds);
+    if(isSchedWorkout){
+      if(hasAnyLog){
         streak++;
+      } else if(i===0){
+        continue;
       } else {
         break;
       }
+    } else {
+      streak++;
     }
   }
   return streak;
@@ -63,22 +59,6 @@ export const getAchievements=(sessions,restDaysLog,exPRs,schedule={})=>{const st
 export const getPlanBg=(panel,isDark)=>{const dm={push:`linear-gradient(145deg,#1C1210,#241608,#281408)`,pull:`linear-gradient(145deg,#121218,#141420,#161628)`,legs:`linear-gradient(145deg,#1A1010,#220E0E,#281010)`,upper:`linear-gradient(145deg,#101814,#101E14,#102414)`};const lm={push:`linear-gradient(145deg,#F5EBE6,#FAF2ED,#FFF8F5)`,pull:`linear-gradient(145deg,#EAEBF8,#EEF2FA,#F5F2FF)`,legs:`linear-gradient(145deg,#F5E8E8,#FAF0EF,#FFF5F5)`,upper:`linear-gradient(145deg,#E8F5EC,#EFF8F1,#F5FFF7)`};return(isDark?dm:lm)[panel]||(isDark?dm.push:lm.push);};
 
 export function playBeeps(){try{const ctx=new(window.AudioContext||window.webkitAudioContext)();[[0,880],[0.22,880],[0.44,1047]].forEach(([t,f])=>{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type="sine";o.frequency.value=f;g.gain.setValueAtTime(0.35,ctx.currentTime+t);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t+0.18);o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+0.2);});}catch(e){}}
-
-export function autoFillRestDays(sessions,restDaysLog){
-  const actDates=new Set([...sessions.map(s=>s.date),...restDaysLog]);
-  if(actDates.size===0)return[];
-  const sorted=[...actDates].sort();
-  const firstDate=new Date(sorted[0]);
-  const today=new Date();today.setHours(0,0,0,0);
-  const newRest=[];
-  const d=new Date(firstDate);d.setDate(d.getDate()+1);
-  while(d<today){
-    const ds=localDateStr(d);
-    if(!actDates.has(ds))newRest.push(ds);
-    d.setDate(d.getDate()+1);
-  }
-  return newRest;
-}
 
 export function getThisWeekMonday(){const t=new Date();const d=t.getDay();const diff=d===0?-6:1-d;const m=new Date(t);m.setDate(t.getDate()+diff);m.setHours(0,0,0,0);return m;}
 

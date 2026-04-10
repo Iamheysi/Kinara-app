@@ -391,11 +391,23 @@
     if (window.__kinaraGuest) { localStorage.removeItem('kinara_v7'); location.reload(); return; }
     signingOut = true;
     appMounted = false;
-    await flushPendingSync();
-    currentUserId = null;
-    await db.auth.signOut();
-    localStorage.removeItem('kinara_v7');
-    location.reload();
+    try {
+      await flushPendingSync();
+      currentUserId = null;
+      await db.auth.signOut();
+    } catch (e) {
+      console.error('[Kinara] Sign-out error:', e);
+    } finally {
+      // Always clear all auth state — even if signOut() failed
+      localStorage.removeItem('kinara_v7');
+      // Safety net: clear Supabase-managed session keys
+      Object.keys(localStorage).forEach(k => {
+        if (k.startsWith('sb-')) localStorage.removeItem(k);
+      });
+      // Clear any OAuth hash fragments to prevent re-auth on reload
+      if (window.location.hash) history.replaceState(null, '', window.location.pathname + window.location.search);
+      location.reload();
+    }
   };
 
   window.__kinaraUserEmail = null;
