@@ -391,21 +391,33 @@
     if (window.__kinaraGuest) { localStorage.removeItem('kinara_v7'); location.reload(); return; }
     signingOut = true;
     appMounted = false;
+    // Race the sync+signOut against a 3s timeout — if any network call hangs,
+    // we still proceed to the finally block and complete the sign-out locally.
+    const withTimeoutMs = (p, ms) => Promise.race([
+      p,
+      new Promise(resolve => setTimeout(resolve, ms)),
+    ]);
     try {
-      await flushPendingSync();
-      currentUserId = null;
-      await db.auth.signOut();
+      await withTimeoutMs((async () => {
+        try { await flushPendingSync(); } catch (e) { console.error('[Kinara] Flush error during sign-out:', e); }
+        currentUserId = null;
+        try { await db.auth.signOut(); } catch (e) { console.error('[Kinara] signOut error:', e); }
+      })(), 3000);
     } catch (e) {
       console.error('[Kinara] Sign-out error:', e);
     } finally {
-      // Always clear all auth state — even if signOut() failed
-      localStorage.removeItem('kinara_v7');
+      // Always clear all auth state — even if signOut() failed or hung
+      try { localStorage.removeItem('kinara_v7'); } catch (e) {}
       // Safety net: clear Supabase-managed session keys
-      Object.keys(localStorage).forEach(k => {
-        if (k.startsWith('sb-')) localStorage.removeItem(k);
-      });
+      try {
+        Object.keys(localStorage).forEach(k => {
+          if (k.startsWith('sb-')) localStorage.removeItem(k);
+        });
+      } catch (e) {}
       // Clear any OAuth hash fragments to prevent re-auth on reload
-      if (window.location.hash) history.replaceState(null, '', window.location.pathname + window.location.search);
+      try {
+        if (window.location.hash) history.replaceState(null, '', window.location.pathname + window.location.search);
+      } catch (e) {}
       location.reload();
     }
   };

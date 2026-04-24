@@ -79,7 +79,7 @@ export function RestTab({c,t,lang,todayActivity,onLogRest,onUndoRest,activeWorko
         </div>
         <div style={{flex:1,background:c.bg,borderRadius:10,padding:"12px 10px",textAlign:"center"}}>
           <p style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:900,color:c.textPrimary}}>{recoveryPct}%</p>
-          <p style={{fontSize:11,color:c.textSecondary}}>{isRu?"Дни отдыха":"Recovery %"}</p>
+          <p style={{fontSize:11,color:c.textSecondary}}>{t.recoveryPctLabel}</p>
         </div>
       </div>
     </div>
