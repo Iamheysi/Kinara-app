@@ -98,16 +98,16 @@ export function LogTab({c,t,activeWorkout,setActiveWorkout,plans,onStart,checkSe
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <span style={{fontSize:13,fontWeight:600,color:warmupDone?c.success:c.textPrimary}}>{t.warmup}</span>
-              {warmupDone&&<span style={{fontSize:9,background:c.successDim,color:c.success,padding:"2px 7px",borderRadius:20,fontWeight:700}}>TARGET REACHED</span>}
+              {warmupDone&&<span style={{fontSize:9,background:c.successDim,color:c.success,padding:"2px 7px",borderRadius:20,fontWeight:700}}>{t.targetReached}</span>}
             </div>
             <div style={{display:"flex",gap:8,alignItems:"center"}}>
               <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:14,color:warmupDone?c.success:wuColor.accent,fontWeight:600}}>{fmtMin(w.elapsed)}</span>
               <span style={{fontSize:11,color:c.textMuted}}>/</span>
               <div style={{display:"flex",alignItems:"center",gap:4}}>
                 <input type="number" min="1" max="60" value={Math.max(1,Math.round(w.warmup.target/60))} onChange={e=>setActiveWorkout(p=>({...p,warmup:{...p.warmup,target:Math.max(60,(parseInt(e.target.value)||1)*60)}}))} style={{width:36,background:c.inputBg,border:`1px solid ${c.borderMid}`,borderRadius:6,padding:"3px 5px",color:c.textPrimary,fontSize:12,fontFamily:"'JetBrains Mono',monospace",textAlign:"center"}}/>
-                <span style={{fontSize:11,color:c.textMuted}}>min</span>
+                <span style={{fontSize:11,color:c.textMuted}}>{t.minShort}</span>
               </div>
-              <button onClick={()=>setActiveWorkout(p=>({...p,warmup:{...p.warmup,done:true}}))} style={{background:warmupDone?c.success:wuColor.accent,color:"#fff",border:"none",borderRadius:7,padding:"5px 13px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",gap:5}}>{Ic.check} Done</button>
+              <button onClick={()=>setActiveWorkout(p=>({...p,warmup:{...p.warmup,done:true}}))} style={{background:warmupDone?c.success:wuColor.accent,color:"#fff",border:"none",borderRadius:7,padding:"5px 13px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",gap:5}}>{Ic.check} {t.doneBtn}</button>
             </div>
           </div>
           <div style={{height:4,background:c.border,borderRadius:2}}><div style={{height:"100%",width:`${warmupProgress}%`,background:warmupDone?c.success:wuColor.accent,borderRadius:2,transition:"width 1s linear"}}/></div>
