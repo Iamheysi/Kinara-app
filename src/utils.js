@@ -1,5 +1,11 @@
 export const DOW_SHORT=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
+export const hexA=(hex,a)=>{const h=hex.replace('#','');const n=h.length===3?h.split('').map(x=>x+x).join(''):h;const r=parseInt(n.substr(0,2),16),g=parseInt(n.substr(2,2),16),b=parseInt(n.substr(4,2),16);return`rgba(${r},${g},${b},${a})`;};
+export const fmtNum=(n)=>Number(n).toLocaleString('en-US');
+export const fmtTime=(s)=>`${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+export const fmtMin=(s)=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+export const computeTotalXp=(sessions,plans)=>sessions.reduce((sum,s)=>{const plan=plans.find(p=>p.name===s.planName||p.id===s.planId);const base=plan?.xpReward||Math.round((s.totalVolume||0)/150+700);return sum+(s.xp||base);},0);
+
 export const localDateStr=(d=new Date())=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
 /**

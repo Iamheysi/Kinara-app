@@ -1,164 +1,86 @@
-import { useState, useRef } from 'react';
-import { Ic } from '../icons.jsx';
-import { KIcon } from '../brandedIcons.jsx';
-import { DARK, MUSCLE_GROUP_COLORS, MUSCLE_GROUP_EMOJI } from '../constants.js';
-import { getPlanBg } from '../utils.js';
+// PlansTab — protocol library
 
-const ALL_MUSCLE_GROUPS=['chest','back','shoulders','triceps','biceps','legs','glutes','core'];
+import { getPlanXpReward } from '../constants.js';
+import { hexA } from '../utils.js';
+import { Tag, CornerFrame } from './kinara-primitives.jsx';
 
-const PRESET_IMAGES=[
-  {id:"chest",label:"Chest",gradient:"linear-gradient(135deg,#8B4513 0%,#A0522D 30%,#CD853F 70%,#D2691E 100%)"},
-  {id:"back",label:"Back",gradient:"linear-gradient(135deg,#1B2838 0%,#2C4A6E 30%,#3B6BA5 70%,#1B3A5C 100%)"},
-  {id:"legs",label:"Legs",gradient:"linear-gradient(135deg,#5B0E2D 0%,#8B1A3A 30%,#A52A4A 70%,#6B1530 100%)"},
-  {id:"shoulders",label:"Shoulders",gradient:"linear-gradient(135deg,#1A4D2E 0%,#2D7A4A 30%,#3D9B5F 70%,#1A5C35 100%)"},
-  {id:"arms",label:"Arms",gradient:"linear-gradient(135deg,#3B1F6E 0%,#5B3A9E 30%,#7B52C4 70%,#4A2888 100%)"},
-  {id:"full",label:"Full Body",gradient:"linear-gradient(135deg,#1A1A3E 0%,#2D2D6B 30%,#3D3D8B 70%,#252560 100%)"},
-];
+const DIFF_COLORS = (c) => ({
+  STARTER: c.success, INTERMEDIATE: c.warn, ADVANCED: c.primary, BRUTAL: c.danger,
+});
 
-export function PlansTab({c,t,theme,plans,setPlans,onStart,onDeletePlan,showToast}){
-  const [selected,setSelected]=useState(null);const [editMode,setEditMode]=useState(false);const [newExName,setNewExName]=useState("");const [confirmDelDetail,setConfirmDelDetail]=useState(false);const [confirmDelId,setConfirmDelId]=useState(null);const [showHelp,setShowHelp]=useState(false);
-  const [showImagePicker,setShowImagePicker]=useState(false);
-  const imgInputRef=useRef(null);
-  const isDark=theme==="dark";const pTxt=isDark?"#FFF":c.textPrimary;const pSub=isDark?"rgba(255,255,255,0.5)":c.textSecondary;
-  const accentOf=p=>p.accent==="clay"?DARK.primary:p.accent==="purple"?DARK.purple:p.accent==="red"?"#B05050":DARK.success;
+export function PlansTab({ c, plans, onStart }) {
+  const diffColors = DIFF_COLORS(c);
 
-  const handleCardImage=(e)=>{
-    const file=e.target.files[0];if(!file)return;
-    const reader=new FileReader();
-    reader.onload=(ev)=>{
-      const img=new Image();
-      img.onload=()=>{
-        const canvas=document.createElement("canvas");
-        canvas.width=480;canvas.height=270;
-        const ctx=canvas.getContext("2d");
-        const ratio=Math.max(480/img.width,270/img.height);
-        const w=img.width*ratio,h=img.height*ratio;
-        ctx.drawImage(img,(480-w)/2,(270-h)/2,w,h);
-        setPlans(p=>p.map((x,i)=>i===selected?{...x,image:canvas.toDataURL("image/jpeg",0.75)}:x));
-        setShowImagePicker(false);
-      };
-      img.src=ev.target.result;
-    };
-    reader.readAsDataURL(file);e.target.value="";
-  };
-  const setPresetImage=(gradient)=>{
-    setPlans(p=>p.map((x,i)=>i===selected?{...x,image:null,presetBg:gradient}:x));
-    setShowImagePicker(false);
-  };
-
-  if(selected!==null){
-    const plan=plans[selected];if(!plan){setSelected(null);return null;}
-    const acc=accentOf(plan);
-    const planMGs=plan.muscleGroups||[];
-    const mgColors=MUSCLE_GROUP_COLORS[isDark?"dark":"light"];
-    const toggleMG=(mg)=>setPlans(p=>p.map((x,i)=>i===selected?{...x,muscleGroups:x.muscleGroups?.includes(mg)?x.muscleGroups.filter(g=>g!==mg):[...(x.muscleGroups||[]),mg]}:x));
-    const addEx=()=>{if(!newExName.trim())return;const defaultMG=planMGs[0]||'general';setPlans(p=>p.map((x,i)=>i===selected?{...x,exercises:[...x.exercises,{id:Date.now(),name:newExName.trim(),muscleGroup:defaultMG,sets:3,reps:10,rest:60}]}:x));setNewExName("");};
-    const rmEx=eid=>setPlans(p=>p.map((x,i)=>i===selected?{...x,exercises:x.exercises.filter(e=>e.id!==eid)}:x));
-    const updEx=(eid,field,val)=>setPlans(p=>p.map((x,i)=>i===selected?{...x,exercises:x.exercises.map(e=>e.id===eid?{...e,[field]:Number(val)||val}:e)}:x));
-    const cardBg=plan.image?`url(${plan.image}) center/cover`:plan.presetBg||getPlanBg(plan.panel,isDark);
-    const saveAndExit=()=>{setEditMode(false);if(showToast)showToast(t.woSession||"Saved!");};
-
-    return(<div style={{maxWidth:880,margin:"0 auto"}}>
-      <input ref={imgInputRef} type="file" accept="image/*" onChange={handleCardImage} style={{display:"none"}}/>
-      <button onClick={()=>{setSelected(null);setEditMode(false);setConfirmDelDetail(false);setShowImagePicker(false);}} style={{background:"none",border:"none",color:c.textSecondary,cursor:"pointer",fontSize:13,marginBottom:14,display:"flex",alignItems:"center",gap:6,fontFamily:"'DM Sans',sans-serif"}}>{t.backToPlans}</button>
-      <div style={{position:"relative",height:140,borderRadius:18,overflow:"hidden",marginBottom:20,background:cardBg}}>
-        {!plan.image&&<svg style={{position:"absolute",right:0,top:0,opacity:isDark?0.08:0.15}} width="220" height="140" viewBox="0 0 220 140"><circle cx="175" cy="70" r="60" stroke={acc} strokeWidth="1" fill="none"/></svg>}
-        <div style={{position:"absolute",inset:0,background:plan.image?"linear-gradient(to top,rgba(0,0,0,0.7) 0%,transparent 60%)":"none"}}/>
-        <div style={{position:"absolute",inset:0,padding:"16px 22px",display:"flex",flexDirection:"column",justifyContent:"flex-end"}}>
-          {editMode?(<>
-            <input value={plan.name} onChange={e=>setPlans(p=>p.map((x,i)=>i===selected?{...x,name:e.target.value}:x))} style={{background:isDark?"rgba(0,0,0,0.5)":"rgba(255,255,255,0.75)",border:`1px solid ${acc}55`,borderRadius:8,padding:"5px 10px",color:pTxt,fontSize:26,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,width:"fit-content",marginBottom:4}}/>
-            <input value={plan.notes||""} onChange={e=>setPlans(p=>p.map((x,i)=>i===selected?{...x,notes:e.target.value}:x))} placeholder={t.addNotes||"Add notes (e.g., Shoulders, chest, triceps)…"} style={{background:isDark?"rgba(0,0,0,0.4)":"rgba(255,255,255,0.65)",border:`1px solid ${isDark?"rgba(255,255,255,0.15)":c.border}`,borderRadius:6,padding:"4px 9px",color:pSub,fontSize:11.5,fontFamily:"'DM Sans',sans-serif",width:"60%",marginTop:2}}/>
-          </>):(<><h2 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:32,fontWeight:900,color:plan.image?"#fff":pTxt}}>{plan.name}</h2>{plan.notes&&<p style={{fontSize:11.5,color:plan.image?"rgba(255,255,255,0.65)":pSub,marginTop:2}}>{plan.notes}</p>}<p style={{fontSize:11,color:plan.image?"rgba(255,255,255,0.5)":pSub,marginTop:1}}>{plan.exercises.length} {t.exercises}</p></>)}
-        </div>
-        <div style={{position:"absolute",top:10,right:10,display:"flex",gap:7}}>
-          <button onClick={()=>onStart(plan)} style={{background:acc,color:"#fff",border:"none",borderRadius:8,padding:"7px 16px",fontSize:13,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",boxShadow:`0 3px 12px ${acc}55`}}>▶ {t.startWorkout}</button>
-          {editMode?(<button onClick={saveAndExit} style={{background:c.success,color:"#fff",border:"none",borderRadius:8,padding:"7px 14px",fontSize:13,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>{Ic.save} {t.saveProfile||"Save"}</button>):(<button onClick={()=>setEditMode(true)} style={{background:isDark?"rgba(0,0,0,0.5)":"rgba(255,255,255,0.75)",color:isDark?"rgba(255,255,255,0.7)":c.textSecondary,border:`1px solid ${isDark?"rgba(255,255,255,0.15)":c.border}`,borderRadius:8,padding:"7px 12px",fontSize:13,fontFamily:"'DM Sans',sans-serif",cursor:"pointer"}}>{t.editPlan}</button>)}
-          {editMode&&<button onClick={()=>setShowImagePicker(!showImagePicker)} style={{background:isDark?"rgba(0,0,0,0.5)":"rgba(255,255,255,0.75)",color:isDark?"rgba(255,255,255,0.7)":c.textSecondary,border:`1px solid ${isDark?"rgba(255,255,255,0.15)":c.border}`,borderRadius:8,padding:"7px 10px",cursor:"pointer",display:"flex",alignItems:"center"}}>{Ic.image}</button>}
-          {!confirmDelDetail?(<button onClick={()=>setConfirmDelDetail(true)} style={{background:isDark?"rgba(80,20,20,0.7)":"rgba(176,80,80,0.15)",color:"#B05050",border:"1px solid rgba(176,80,80,0.3)",borderRadius:8,padding:"7px 10px",cursor:"pointer",display:"flex",alignItems:"center",gap:5,fontSize:12,fontFamily:"'DM Sans',sans-serif"}}>{Ic.trash}</button>):(<div style={{display:"flex",gap:5,alignItems:"center"}}><span style={{fontSize:11,color:"#B05050",background:isDark?"rgba(0,0,0,0.6)":"rgba(255,255,255,0.88)",borderRadius:6,padding:"5px 8px",whiteSpace:"nowrap"}}>{t.confirmDelete}</span><button onClick={()=>{onDeletePlan(plan.id);setSelected(null);setConfirmDelDetail(false);}} style={{background:"#B05050",color:"#fff",border:"none",borderRadius:7,padding:"6px 10px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{t.yes}</button><button onClick={()=>setConfirmDelDetail(false)} style={{background:isDark?"rgba(0,0,0,0.5)":"rgba(255,255,255,0.75)",color:isDark?"rgba(255,255,255,0.7)":c.textSecondary,border:`1px solid ${isDark?"rgba(255,255,255,0.15)":c.border}`,borderRadius:7,padding:"6px 10px",fontSize:11,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{t.no}</button></div>)}
-        </div>
+  return (
+    <div style={{ padding: '32px 40px 60px', overflowY: 'auto', height: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginBottom: 28 }}>
+        <span style={{ fontFamily: c.fontMono, fontSize: 10, color: c.primary, letterSpacing: 2, fontWeight: 700 }}>§ LIBRARY</span>
+        <h1 style={{ fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 64, letterSpacing: -2.5, color: c.text, textTransform: 'uppercase', lineHeight: 0.9 }}>PROTOCOLS</h1>
+        <div style={{ flex: 1, height: 1, background: c.borderHi, opacity: 0.25 }} />
+        <span style={{ fontFamily: c.fontMono, fontSize: 10, color: c.textDim, letterSpacing: 1.5 }}>{plans.length} AVAILABLE</span>
       </div>
 
-      {/* Image Picker */}
-      {showImagePicker&&editMode&&(<div style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:12,padding:"14px 16px",marginBottom:14}}>
-        <p style={{fontSize:12,fontWeight:600,color:c.textPrimary,marginBottom:10}}>{t.chooseImage||"Choose Card Image"}</p>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:10}}>
-          {PRESET_IMAGES.map(p=>(<button key={p.id} onClick={()=>setPresetImage(p.gradient)} style={{height:60,borderRadius:10,background:p.gradient,border:`2px solid ${c.border}`,cursor:"pointer",display:"flex",alignItems:"flex-end",padding:"0 10px 8px",boxShadow:"inset 0 -20px 30px rgba(0,0,0,0.3)",transition:"transform 0.15s, border-color 0.15s"}}><span style={{fontSize:11,fontWeight:600,color:"#fff",textShadow:"0 1px 4px rgba(0,0,0,0.7)",fontFamily:"'DM Sans',sans-serif"}}>{p.label}</span></button>))}
-        </div>
-        <button onClick={()=>imgInputRef.current?.click()} style={{width:"100%",background:c.surface,border:`1px solid ${c.border}`,borderRadius:8,padding:"8px",fontSize:12,color:c.textSecondary,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>{Ic.image} {t.uploadPhoto||"Upload Image"}</button>
-        {plan.image&&<button onClick={()=>setPlans(p=>p.map((x,i)=>i===selected?{...x,image:null,presetBg:null}:x))} style={{width:"100%",marginTop:6,background:"none",border:`1px solid ${c.border}`,borderRadius:8,padding:"6px",fontSize:11,color:c.textMuted,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{t.removeImage||"Remove Image"}</button>}
-      </div>)}
+      <div className="kb-plans-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 14 }}>
+        {plans.map((pl, idx) => {
+          const diffCol = diffColors[pl.difficulty] || c.text;
+          const xpReward = getPlanXpReward(pl);
+          const totalSets = pl.exercises.reduce((a, e) => a + (e.sets || 3), 0);
+          const estMin = Math.round(pl.exercises.reduce((a, e) => a + (e.rest || 60) * (e.sets || 3), 0) / 60);
 
-      {/* Muscle Group Selector */}
-      {editMode&&(<div style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:12,padding:"14px 16px",marginBottom:14}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-          <p style={{fontSize:12,fontWeight:600,color:c.textPrimary}}>{t.muscleGroupsLabel||"Muscle Groups"}</p>
-          <button onClick={()=>setShowHelp(v=>!v)} aria-label={t.planHelpAria||"How to customize plans"} title={t.planHelpAria||"How to customize plans"} style={{background:"none",border:"none",color:showHelp?c.primary:c.textMuted,cursor:"pointer",padding:2,display:"inline-flex",alignItems:"center",gap:4,fontSize:11,fontFamily:"'DM Sans',sans-serif"}}>{Ic.info}<span>{t.planHelpHowTo||"How it works"}</span></button>
-        </div>
-        <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
-          {ALL_MUSCLE_GROUPS.map(mg=>{const sel=planMGs.includes(mg);const gc=mgColors[mg]||mgColors.general;return(
-            <button key={mg} onClick={()=>toggleMG(mg)} style={{background:sel?gc.dim:"transparent",border:`1.5px solid ${sel?gc.accent:c.border}`,borderRadius:20,padding:"5px 13px",fontSize:12,fontWeight:sel?700:400,color:sel?gc.accent:c.textSecondary,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",gap:5,transition:"all 0.15s"}}>
-              <span style={{fontSize:13}}>{MUSCLE_GROUP_EMOJI[mg]||'🏋️'}</span>{mg.charAt(0).toUpperCase()+mg.slice(1)}
-            </button>);
-          })}
-        </div>
-        {showHelp&&(<div style={{background:c.primaryDim,border:`1px solid ${c.primary}33`,borderRadius:10,padding:"12px 14px",marginTop:10,animation:"fadeUp 0.2s ease"}}>
-          <p style={{fontSize:12,fontWeight:700,color:c.primary,marginBottom:8,letterSpacing:0.3}}>{t.planHelpTitle||"How to customize this plan"}</p>
-          <ul style={{listStyle:"none",padding:0,margin:0,display:"flex",flexDirection:"column",gap:6}}>
-            {[t.planHelpMuscleGroups||"Muscle Groups — tap to choose which groups this plan targets. Selected groups appear in each exercise's Group dropdown and color-code the exercise rows.",
-              t.planHelpExerciseName||"Exercise name — type a name and press Enter or + to add it to the plan.",
-              t.planHelpGroup||"Group — assign each exercise to one of the plan's muscle groups (or General). Drives color-coding and progress tracking.",
-              t.planHelpSetsReps||"Sets / Reps / Rest(s) — number of working sets, reps per set, and seconds of rest between sets. Rest is used by the rest timer during a workout.",
-              t.planHelpSave||"Press Save (top right) to keep changes, then ▶ Start Workout to begin a logged session."
-            ].map((line,i)=>(<li key={i} style={{fontSize:11.5,color:c.textSecondary,lineHeight:1.6,paddingLeft:14,position:"relative"}}><span style={{position:"absolute",left:0,top:0,color:c.primary,fontWeight:700}}>•</span>{line}</li>))}
-          </ul>
-        </div>)}
-      </div>)}
-      {!editMode&&planMGs.length>0&&(<div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
-        {planMGs.map(mg=>{const gc=mgColors[mg]||mgColors.general;return(
-          <span key={mg} style={{background:gc.dim,border:`1px solid ${gc.border}`,borderRadius:16,padding:"3px 10px",fontSize:11,fontWeight:600,color:gc.accent,display:"flex",alignItems:"center",gap:4}}>
-            <span style={{fontSize:11}}>{MUSCLE_GROUP_EMOJI[mg]||'🏋️'}</span>{mg.charAt(0).toUpperCase()+mg.slice(1)}
-          </span>);
-        })}
-      </div>)}
+          return (
+            <div key={pl.id} style={{
+              background: c.surface, border: `1px solid ${c.borderHi}`,
+              position: 'relative', padding: '24px 26px 22px',
+              display: 'grid', gridTemplateColumns: '1fr auto', gap: 20,
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                  <span style={{ fontFamily: c.fontMono, fontSize: 10, color: c.primary, letterSpacing: 2, fontWeight: 700 }}>
+                    {String(idx + 1).padStart(2, '0')} · {pl.code || pl.id}
+                  </span>
+                  <Tag c={c} color={diffCol}>{pl.difficulty || 'INTERMEDIATE'}</Tag>
+                </div>
+                <h3 style={{
+                  fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 38,
+                  letterSpacing: -1.2, color: c.text, textTransform: 'uppercase', lineHeight: 0.9,
+                }}>{pl.name}</h3>
+                <div style={{ fontFamily: c.fontMono, fontSize: 11, color: c.textDim, letterSpacing: 1, marginTop: 8 }}>
+                  {pl.tag || pl.notes}
+                </div>
 
-      {plan.exercises.map((ex,i)=>{const exMGColor=mgColors[ex.muscleGroup]||mgColors.general;const groupOpts=Array.from(new Set([...planMGs,'general',ex.muscleGroup||'general']));return(<div key={ex.id} style={{background:c.card,border:`1px solid ${c.border}`,borderLeft:`3px solid ${exMGColor.accent}`,borderRadius:"0 11px 11px 0",padding:"12px 15px",marginBottom:7,display:"flex",alignItems:"center",gap:10}}><div style={{width:22,height:22,borderRadius:6,background:exMGColor.dim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:exMGColor.accent,fontWeight:700,flexShrink:0}}>{i+1}</div><div style={{flex:1}}><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{display:"inline-flex",alignItems:"center",color:exMGColor.accent,flexShrink:0}}><KIcon.dumbbell color={exMGColor.accent} size={14}/></span><p style={{fontSize:13,fontWeight:500,color:c.textPrimary}}>{ex.name}</p>{ex.muscleGroup&&!editMode&&<span style={{fontSize:9,color:exMGColor.accent,background:exMGColor.dim,padding:"1px 6px",borderRadius:8,fontWeight:600}}>{ex.muscleGroup}</span>}</div>{editMode?(<div style={{display:"flex",gap:7,marginTop:5,alignItems:"center",flexWrap:"wrap"}}>
-        <label style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:c.textSecondary}}>Group:<select value={ex.muscleGroup||'general'} onChange={e=>updEx(ex.id,'muscleGroup',e.target.value)} style={{background:c.inputBg,border:`1px solid ${c.border}`,borderRadius:5,padding:"3px 5px",color:c.textPrimary,fontSize:11,fontFamily:"'DM Sans',sans-serif"}}>{groupOpts.map(mg=><option key={mg} value={mg}>{mg.charAt(0).toUpperCase()+mg.slice(1)}</option>)}</select></label>
-        {[["sets","Sets",1,10],["reps","Reps",1,30],["rest","Rest(s)",15,300]].map(([field,label,min,max])=>(<label key={field} style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:c.textSecondary}}>{label}:<input type="number" min={min} max={max} value={ex[field]} onChange={e=>updEx(ex.id,field,e.target.value)} style={{width:46,background:c.inputBg,border:`1px solid ${c.border}`,borderRadius:5,padding:"3px 5px",color:c.textPrimary,fontSize:11,fontFamily:"'JetBrains Mono',monospace",textAlign:"center"}}/></label>))}</div>):(<p style={{fontSize:11,color:c.textSecondary,marginTop:2}}>{ex.sets} × {ex.reps} reps · {ex.rest}s rest</p>)}</div>{editMode&&<button onClick={()=>rmEx(ex.id)} style={{background:"none",border:"none",color:"#B05050",cursor:"pointer",padding:"4px"}}>{Ic.trash}</button>}</div>);})}
-      {editMode&&(<div style={{display:"flex",gap:8,marginTop:7}}><input value={newExName} onChange={e=>setNewExName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addEx()} placeholder="Exercise name…" style={{flex:1,background:c.inputBg,border:`1px solid ${c.borderMid}`,borderRadius:9,padding:"10px 13px",color:c.textPrimary,fontSize:13,fontFamily:"'DM Sans',sans-serif"}}/><button onClick={addEx} style={{background:c.primary,color:"#fff",border:"none",borderRadius:9,padding:"10px 15px",cursor:"pointer"}}>{Ic.plus}</button></div>)}
-    </div>);
-  }
-
-  return(<div style={{maxWidth:1100,margin:"0 auto"}}>
-    <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",marginBottom:20}}><div><p style={{fontSize:10,color:c.primary,letterSpacing:1.8,textTransform:"uppercase",fontWeight:700,marginBottom:3}}>{t.myPlans}</p><h2 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:38,fontWeight:900,color:c.textPrimary}}>{t.trainingPlans}</h2></div><button onClick={()=>{setPlans(p=>[...p,{id:Date.now(),name:"New Plan",panel:"upper",accent:"clay",warmup:{enabled:true,duration:300},notes:"",muscleGroups:[],exercises:[]}]);setSelected(plans.length);setEditMode(true);}} style={{background:c.primary,color:"#fff",border:"none",borderRadius:10,padding:"10px 18px",fontSize:13,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",boxShadow:`0 3px 12px ${c.primary}44`}}>{t.newPlan}</button></div>
-    <div className="kb-plans-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:14}}>
-      {plans.map((p,i)=>{const acc=accentOf(p);const isConfirming=confirmDelId===p.id;const cardBg=p.image?`url(${p.image}) center/cover`:p.presetBg||getPlanBg(p.panel,isDark);const pMGs=p.muscleGroups||[];const mgC=MUSCLE_GROUP_COLORS[isDark?"dark":"light"];const primaryMG=pMGs[0];const primaryEmoji=primaryMG?MUSCLE_GROUP_EMOJI[primaryMG]:'🏋️';return(<div key={p.id} className="kb-card-hover" onClick={()=>!isConfirming&&setSelected(i)} style={{background:c.card,border:`1px solid ${isConfirming?"#B05050":c.border}`,borderRadius:16,overflow:"hidden",cursor:isConfirming?"default":"pointer",transition:"all 0.2s",boxShadow:"0 2px 10px rgba(0,0,0,0.08)"}}>
-        <div style={{position:"relative",height:130,background:cardBg,overflow:"hidden"}}>
-          {!p.image&&<svg style={{position:"absolute",right:0,top:0,opacity:isDark?0.08:0.2}} width="160" height="130" viewBox="0 0 160 130"><circle cx="130" cy="65" r="50" stroke={acc} strokeWidth="1" fill="none"/></svg>}
-          <div style={{position:"absolute",inset:0,background:p.image?"linear-gradient(to top,rgba(0,0,0,0.75) 0%,transparent 55%)":isDark?"linear-gradient(to bottom,transparent 10%,rgba(0,0,0,0.8))":"linear-gradient(to bottom,transparent 10%,rgba(0,0,0,0.45))"}}/>
-          <div style={{position:"absolute",top:10,left:14}}><span style={{fontSize:28}}>{primaryEmoji}</span></div>
-          <div style={{position:"absolute",bottom:10,left:14,right:14}}>
-            <h3 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:23,fontWeight:900,color:"#fff",lineHeight:1.1}}>{p.name}</h3>
-            {pMGs.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:5}}>
-              {pMGs.map(mg=>{const gc=mgC[mg]||mgC.general;return(<span key={mg} style={{fontSize:9.5,fontWeight:700,color:"#fff",background:`${gc.accent}55`,backdropFilter:"blur(4px)",borderRadius:10,padding:"2px 7px",letterSpacing:0.3}}>{mg.charAt(0).toUpperCase()+mg.slice(1)}</span>);})}
-            </div>}
-            {!pMGs.length&&p.notes&&<p style={{fontSize:10.5,color:"rgba(255,255,255,0.6)",marginTop:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.notes}</p>}
-          </div>
-        </div>
-        <div style={{padding:"12px 14px"}}>
-          {isConfirming?(<div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{fontSize:12,color:"#B05050",fontWeight:500}}>{t.confirmDelete}</span><div style={{display:"flex",gap:6}}><button onClick={e=>{e.stopPropagation();onDeletePlan(p.id);setConfirmDelId(null);}} style={{background:"#B05050",color:"#fff",border:"none",borderRadius:7,padding:"5px 13px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{t.yes}</button><button onClick={e=>{e.stopPropagation();setConfirmDelId(null);}} style={{background:c.bg,color:c.textSecondary,border:`1px solid ${c.border}`,borderRadius:7,padding:"5px 10px",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{t.no}</button></div></div>):(
-            <div>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                <p style={{fontSize:12,color:c.textSecondary,fontWeight:500}}>{p.exercises.length} {t.exercises}</p>
-                <div style={{display:"flex",gap:5}}>
-                  <button onClick={e=>{e.stopPropagation();setSelected(i);}} style={{background:c.bg,color:c.textSecondary,border:`1px solid ${c.border}`,borderRadius:7,padding:"4px 10px",fontSize:11,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{t.editPlan}</button>
-                  <button onClick={e=>{e.stopPropagation();setConfirmDelId(p.id);}} style={{background:"none",border:`1px solid ${c.border}`,color:"#B05050",borderRadius:7,padding:"4px 8px",cursor:"pointer",display:"flex",alignItems:"center"}}>{Ic.trash}</button>
+                <div style={{ display: 'flex', gap: 22, marginTop: 20, paddingTop: 16, borderTop: `1px solid ${c.border}` }}>
+                  {[
+                    { v: pl.exercises.length, l: 'EX' },
+                    { v: totalSets, l: 'SETS' },
+                    { v: `~${estMin}m`, l: 'TIME' },
+                    { v: `+${xpReward}`, l: 'XP', hi: true },
+                  ].map((s, i) => (
+                    <div key={i}>
+                      <div style={{ fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 24, color: s.hi ? c.primary : c.text, lineHeight: 0.95, letterSpacing: -0.5 }}>{s.v}</div>
+                      <div style={{ fontFamily: c.fontMono, fontSize: 8.5, color: c.textMute, letterSpacing: 1.3, marginTop: 2, fontWeight: 700 }}>{s.l}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <button onClick={e=>{e.stopPropagation();onStart(p);}} style={{width:"100%",background:`linear-gradient(135deg,${acc},${acc}CC)`,color:"#fff",border:"none",borderRadius:10,padding:"10px",fontSize:14,fontWeight:900,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",boxShadow:`0 3px 12px ${acc}44`,display:"flex",alignItems:"center",justifyContent:"center",gap:6,letterSpacing:1}}>▶ {t.startWorkout}</button>
+
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12 }}>
+                <div style={{ width: 72, height: 72, background: c.bg, border: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                  <span style={{ fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 40, color: c.primary, letterSpacing: -1 }}>
+                    {(pl.code || pl.name)[0]}
+                  </span>
+                  <CornerFrame c={c} color={c.borderHi} sz={8} />
+                </div>
+                <button onClick={() => onStart(pl)} style={{
+                  background: c.primary, color: c.primaryInk, border: 'none',
+                  padding: '10px 16px',
+                  fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 14, letterSpacing: 0.5,
+                  textTransform: 'uppercase', cursor: 'pointer',
+                }}>▶ START</button>
+              </div>
             </div>
-          )}
-        </div>
-      </div>);})}
+          );
+        })}
+      </div>
     </div>
-  </div>);
+  );
 }

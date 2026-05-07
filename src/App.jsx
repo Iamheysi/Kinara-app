@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { DARK, LIGHT, TR, DEFAULT_PLANS, DEFAULT_SCHEDULE } from './constants.js';
-import { localDateStr, calcStreak, playBeeps } from './utils.js';
+import { DARK, LIGHT, THEMES, TR, DEFAULT_PLANS, DEFAULT_SCHEDULE, getLevel } from './constants.js';
+import { localDateStr, calcStreak, playBeeps, computeTotalXp } from './utils.js';
 import { LogoMark } from './components/LogoMark.jsx';
 import { Toast } from './components/Toast.jsx';
 import { Sidebar } from './components/Sidebar.jsx';
@@ -26,10 +26,10 @@ import { UpgradePrompt } from './components/UpgradePrompt.jsx';
 import { AchievementToast } from './components/AchievementToast.jsx';
 import { getAchievements } from './utils.js';
 
-const FONTS=`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap');`;
+const FONTS=`@import url('https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&family=Barlow+Condensed:wght@300;400;600;700;800;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap');`;
 
 function App(){
-  const [theme,setTheme]=useState("light");const [lang,setLang]=useState(window.__kinaraGuestLang||"en");
+  const [theme,setTheme]=useState("cobalt");const [lang,setLang]=useState(window.__kinaraGuestLang||"en");
   const [profileName,setProfileName]=useState("My Profile");const [profileBio,setProfileBio]=useState("");const [profileGoal,setProfileGoal]=useState("general");const [profilePhoto,setProfilePhoto]=useState(null);
   const [tab,setTab]=useState("home");const [menuOpen,setMenuOpen]=useState(false);const [settingsOpen,setSettingsOpen]=useState(false);
   const [plans,setPlans]=useState(DEFAULT_PLANS);const [schedule,setSchedule]=useState(DEFAULT_SCHEDULE);
@@ -61,7 +61,7 @@ function App(){
       if(Array.isArray(saved.restDaysLog))setRestDaysLog(saved.restDaysLog);
       if(Array.isArray(saved.plans))setPlans(saved.plans);
       if(saved.schedule)setSchedule(saved.schedule);
-      if(saved.theme)setTheme(saved.theme);
+      if(saved.theme){const themeMap={dark:"cobalt",light:"steel"};setTheme(THEMES[saved.theme]?saved.theme:(themeMap[saved.theme]||"cobalt"));}
       if(saved.lang)setLang(saved.lang);
       if(saved.profileName)setProfileName(saved.profileName);
       if(saved.profileBio!==undefined)setProfileBio(saved.profileBio);
@@ -114,7 +114,9 @@ function App(){
     return ()=>window.removeEventListener('beforeunload',handleBeforeUnload);
   },[]);
 
-  const c=theme==="dark"?DARK:LIGHT;const t=TR[lang];
+  const c=THEMES[theme]||THEMES.cobalt;const t=TR[lang]||TR.en;
+  const totalXp=computeTotalXp?computeTotalXp(sessions,plans):0;
+  const levelInfo=getLevel?getLevel(totalXp):{lvl:1,name:'INITIATE',progress:0,xpForNext:500,totalXp:0};
   const todayStr=localDateStr();
   const streak=calcStreak(sessions,restDaysLog,schedule);
   const todayWorkout=sessions.some(s=>s.date===todayStr);
@@ -198,13 +200,13 @@ function App(){
   return(<div style={{display:"flex",height:"100vh",background:c.bg,fontFamily:"'DM Sans',sans-serif",color:c.textPrimary,overflow:"hidden",transition:"background 0.3s"}}>
     <input ref={fileInputRef} type="file" accept=".json" onChange={handleImportFile} style={{display:"none"}}/>
     {/* Photo input is now inside ProfileTab with crop preview */}
-    <Sidebar tab={tab} setTab={setTab} running={!!activeWorkout} streak={streak} profileName={profileName} profilePhoto={profilePhoto} c={c} t={t} onOpenSettings={()=>setSettingsOpen(true)} onOpenUpgrade={()=>setShowUpgrade(true)}/>
+    <Sidebar tab={tab} setTab={setTab} running={!!activeWorkout} c={c} theme={theme} setTheme={setTheme} levelInfo={levelInfo} streak={streak} profileName={profileName} profilePhoto={profilePhoto} t={t} onOpenSettings={()=>setSettingsOpen(true)} onOpenUpgrade={()=>setShowUpgrade(true)}/>
     <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-      <Header running={!!activeWorkout} time={activeWorkout?.elapsed||0} formatTime={formatTime} setTab={setTab} menuOpen={menuOpen} setMenuOpen={setMenuOpen} c={c} t={t}/>
+      <Header c={c} theme={theme} tab={tab} running={!!activeWorkout} elapsed={activeWorkout?.elapsed||0} formatTime={formatTime} streak={streak} weeklyRank={null} setTab={setTab} menuOpen={menuOpen} setMenuOpen={setMenuOpen} t={t}/>
       {window.__kinaraGuest&&(<div style={{background:theme==="dark"?"linear-gradient(to right,rgba(196,130,106,0.12),rgba(196,130,106,0.04))":"linear-gradient(to right,rgba(43,85,204,0.08),rgba(43,85,204,0.02))",borderBottom:`1px solid ${c.primary}22`,padding:"8px 26px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,gap:8}}><p style={{fontSize:12,color:c.textSecondary,flex:1,minWidth:0}}>{lang==="ru"?"Гостевой режим — данные не сохраняются.":"Guest mode — your data will not be saved."} <span style={{color:c.primaryLight}}>{lang==="ru"?"Создайте аккаунт для сохранения.":"Create an account to keep your progress."}</span></p><button onClick={()=>window.__kinaraSignOut?.()} style={{background:c.primary,color:"#fff",border:"none",borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",whiteSpace:"nowrap"}}>{lang==="ru"?"Создать аккаунт":"Sign Up"}</button></div>)}
       {todayActivity===null&&!bannerDismissed&&!activeWorkout&&(<div style={{background:`linear-gradient(to right,${c.primaryDim},transparent)`,borderBottom:`1px solid ${c.primary}22`,padding:"8px 26px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,gap:8}}><p style={{fontSize:12,color:c.textSecondary,flex:1,minWidth:0}}>{t.noActivityToday} <span style={{color:c.primaryLight}}>{t.restStreakNote}</span></p><div style={{display:"flex",gap:7,flexShrink:0}}><button onClick={()=>{logRestDay();setTab("rest");}} style={{background:c.primary,color:"#fff",border:"none",borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:600,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",whiteSpace:"nowrap"}}>{t.logRestDay}</button><button onClick={()=>setBannerDismissed(true)} style={{background:"none",border:`1px solid ${c.border}`,color:c.textMuted,borderRadius:7,padding:"5px 9px",fontSize:11.5,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{t.dismiss}</button></div></div>)}
-      <div style={{flex:1,overflow:"auto",padding:"28px 32px"}} className="tab-content kb-main-pad" key={tab}>
-        {tab==="home"&&<HomeTab c={c} t={t} lang={lang} setTab={setTab} running={!!activeWorkout} sessions={sessions} restDaysLog={restDaysLog} todayActivity={todayActivity} logRestDay={logRestDay} plans={plans} schedule={schedule} setSchedule={setSchedule} onSelectPlan={selectPlanForWorkout} profileName={profileName}/>}
+      <div style={{flex:1,overflow:tab==="log"?"hidden":"auto",padding:tab==="log"?"0":"28px 32px",display:tab==="log"?"flex":"block",flexDirection:"column"}} className="tab-content kb-main-pad" key={tab}>
+        {tab==="home"&&<HomeTab c={c} t={t} lang={lang} setTab={setTab} running={!!activeWorkout} sessions={sessions} restDaysLog={restDaysLog} todayActivity={todayActivity} logRestDay={logRestDay} plans={plans} schedule={schedule} setSchedule={setSchedule} onSelectPlan={selectPlanForWorkout} onStartPlan={startWorkout} profileName={profileName} streak={streak} levelInfo={levelInfo} totalXp={totalXp}/>}
         {tab==="plans"&&<PlansTab c={c} t={t} theme={theme} plans={plans} setPlans={setPlans} onStart={startWorkout} onDeletePlan={deletePlan} showToast={showToast}/>}
         {tab==="log"&&<LogTab c={c} t={t} theme={theme} activeWorkout={activeWorkout} setActiveWorkout={setActiveWorkout} plans={plans} onStart={startWorkout} checkSet={checkSet} updateSet={updateSet} finishWorkout={finishWorkout} allSetsDone={allSetsDone} formatTime={formatTime} fmtMin={fmtMin} todayActivity={todayActivity} defaultPlanId={pendingPlanId}/>}
         {tab==="rest"&&<RestTab c={c} t={t} lang={lang} todayActivity={todayActivity} onLogRest={logRestDay} onUndoRest={undoRestDay} schedule={schedule} activeWorkout={!!activeWorkout} onOverrideRest={()=>{undoRestDay();setTab("log");}} restDaysLog={restDaysLog} sessions={sessions} streak={streak}/>}

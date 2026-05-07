@@ -1,241 +1,402 @@
+// LogTab — gym-industrial workout HUD
 import { useState, useEffect } from 'react';
-import { Ic } from '../icons.jsx';
-import { KIcon } from '../brandedIcons.jsx';
-import { MUSCLE_GROUP_COLORS, MUSCLE_GROUP_EMOJI } from '../constants.js';
+import { getPlanXpReward, calcSessionXp } from '../constants.js';
+import { hexA } from '../utils.js';
+import { Tag, CornerFrame } from './kinara-primitives.jsx';
 
-export function LogTab({c,t,activeWorkout,setActiveWorkout,plans,onStart,checkSet,updateSet,finishWorkout,allSetsDone,formatTime,fmtMin,todayActivity,defaultPlanId,theme}){
-  const [selPlanId,setSelPlanId]=useState(defaultPlanId||plans[0]?.id);
-  useEffect(()=>{if(defaultPlanId)setSelPlanId(defaultPlanId);},[defaultPlanId]);
+export function LogTab({ c, activeWorkout, setActiveWorkout, plans, onStart, checkSet, updateSet, finishWorkout, allSetsDone, formatTime, todayActivity, defaultPlanId }) {
+  if (!activeWorkout) {
+    return <PlanSelect c={c} plans={plans} onStartPlan={onStart} defaultPlanId={defaultPlanId} todayActivity={todayActivity} />;
+  }
+  return <ActiveWorkout c={c} w={activeWorkout} setW={setActiveWorkout} checkSet={checkSet} updateSet={updateSet} onExit={() => setActiveWorkout(null)} finishWorkout={finishWorkout} allSetsDone={allSetsDone} formatTime={formatTime} />;
+}
 
-  if(!activeWorkout){
-    if(todayActivity==="rest")return(<div style={{maxWidth:460,margin:"60px auto",textAlign:"center"}}><div style={{fontSize:48,marginBottom:16}}>🌙</div><p style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:30,fontWeight:900,color:c.textPrimary,marginBottom:8}}>{t.restBlockedMsg}</p><p style={{fontSize:14,color:c.textSecondary}}>{t.restBlockedSub}</p></div>);
-    const isDarkPicker=theme==="dark";const mgCPicker=MUSCLE_GROUP_COLORS[isDarkPicker?"dark":"light"];
-    return(<div style={{maxWidth:560,margin:"40px auto"}}>
-      <div style={{textAlign:"center",marginBottom:24}}>
-        <p style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:34,fontWeight:900,color:c.textPrimary,marginBottom:6}}>{t.logWorkout}</p>
-        <p style={{fontSize:13,color:c.textSecondary}}>{t.selectPlan}</p>
+// ── Plan Select ──────────────────────────────────────────────────────────────
+
+function PlanSelect({ c, plans, onStartPlan, defaultPlanId, todayActivity }) {
+  const [selId, setSelId] = useState(defaultPlanId || plans[0]?.id);
+
+  const sel = plans.find(p => p.id === selId) || plans[0];
+  const totalSets = sel ? sel.exercises.reduce((a, e) => a + (e.sets || 3), 0) : 0;
+  const estMin = sel ? Math.round(sel.exercises.reduce((a, e) => a + (e.rest || 60) * (e.sets || 3), 0) / 60) : 0;
+  const xpReward = sel ? getPlanXpReward(sel) : 0;
+
+  const DIFF_COLORS = { STARTER: c.success, INTERMEDIATE: c.warn, ADVANCED: c.primary, BRUTAL: c.danger };
+
+  if (todayActivity === 'rest') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 20 }}>
+        <div style={{ fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 72, color: c.textDim, letterSpacing: -3, textTransform: 'uppercase', lineHeight: 0.9 }}>REST</div>
+        <div style={{ fontFamily: c.fontMono, fontSize: 11, color: c.textMute, letterSpacing: 2 }}>REST DAY SCHEDULED — RECOVER HARD</div>
       </div>
-      <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:24}}>
-        {plans.map(p=>{const pMGs=p.muscleGroups||[];const primaryEmoji=pMGs[0]?MUSCLE_GROUP_EMOJI[pMGs[0]]:'🏋️';const isSel=selPlanId===p.id;return(
-          <div key={p.id} className="kb-card-hover" onClick={()=>setSelPlanId(p.id)} style={{background:c.card,border:`1.5px solid ${isSel?c.primary:c.border}`,borderRadius:14,padding:"16px 18px",cursor:"pointer",transition:"all 0.15s",boxShadow:isSel?`0 0 0 3px ${c.primary}22`:"none"}}>
-            <div style={{display:"flex",alignItems:"center",gap:12}}>
-              <div style={{width:44,height:44,borderRadius:12,background:isSel?c.primaryDim:c.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0,border:`1px solid ${isSel?c.primary+"33":c.border}`,transition:"all 0.15s"}}>{primaryEmoji}</div>
-              <div style={{flex:1,minWidth:0}}>
-                <p style={{fontSize:15,fontWeight:700,color:c.textPrimary,marginBottom:3}}>{p.name}</p>
-                <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                  <span style={{fontSize:11,color:c.textSecondary}}>{p.exercises.length} {t.exercises}</span>
-                  {pMGs.length>0&&pMGs.map(mg=>{const gc=mgCPicker[mg]||mgCPicker.general;return(
-                    <span key={mg} style={{fontSize:9,fontWeight:700,color:gc.accent,background:gc.dim,padding:"1px 6px",borderRadius:8}}>{mg.charAt(0).toUpperCase()+mg.slice(1)}</span>
-                  );})}
-                </div>
-              </div>
-              <div style={{width:22,height:22,borderRadius:"50%",border:`2px solid ${isSel?c.primary:c.border}`,background:isSel?c.primary:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",flexShrink:0,transition:"all 0.15s"}}>{isSel&&Ic.check}</div>
-            </div>
-          </div>);
-        })}
-      </div>
-      <button onClick={()=>{const p=plans.find(x=>x.id===selPlanId);if(p)onStart(p);}} style={{width:"100%",maxWidth:340,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:`linear-gradient(135deg,${c.primary},${c.primary}CC)`,color:"#fff",border:"none",borderRadius:12,padding:"14px 42px",fontSize:16,fontWeight:900,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",boxShadow:`0 4px 16px ${c.primary}44`,letterSpacing:1}}>▶ {t.startWorkout}</button>
-    </div>);
+    );
   }
 
-  const w=activeWorkout;
-  const isDark=theme==="dark";
-  const mgColors=MUSCLE_GROUP_COLORS[isDark?"dark":"light"];
-  const totalSets=w.exercises.reduce((a,e)=>a+e.sets.length,0);
-  const doneSets=w.exercises.reduce((a,e)=>a+e.sets.filter(s=>s.done).length,0);
-  const progress=(doneSets/totalSets)*100;
-  const togglePause=()=>setActiveWorkout(p=>({...p,paused:!p.paused}));
-  const warmupProgress=Math.min(100,(w.elapsed/w.warmup.target)*100);
-  const warmupDone=w.elapsed>=w.warmup.target;
-
-  // Group exercises by muscleGroup
-  const grouped=[];
-  const groupMap={};
-  w.exercises.forEach((ex,exIdx)=>{
-    const g=ex.muscleGroup||'general';
-    if(!groupMap[g]){groupMap[g]={group:g,exercises:[]};grouped.push(groupMap[g]);}
-    groupMap[g].exercises.push({...ex,_exIdx:exIdx});
-  });
-
-  const getGroupColor=(group)=>mgColors[group]||mgColors.general;
-  const getGroupEmoji=(group)=>MUSCLE_GROUP_EMOJI[group]||'🏋️';
-
-  return(<div style={{maxWidth:720,margin:"0 auto"}}>
-    {/* ── Top Header ── */}
-    <div style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:16,padding:"16px 20px",marginBottom:16}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-        <div>
-          <p style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,color:c.primary,letterSpacing:2.5,textTransform:"uppercase",marginBottom:2}}>{w.planName}</p>
-        </div>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <div style={{display:"flex",alignItems:"center",gap:6}}>
-            <span style={{fontSize:10,color:c.textMuted}}>⏱</span>
-            <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:16,fontWeight:500,color:w.paused?c.gold:c.textPrimary,letterSpacing:1}}>{formatTime(w.elapsed)}</span>
-          </div>
-          <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:c.textSecondary}}>{doneSets}/{totalSets} {t.setsLabel}</span>
-        </div>
-      </div>
-      <div style={{height:5,background:c.border,borderRadius:3,marginBottom:10}}>
-        <div style={{height:"100%",width:`${progress}%`,background:doneSets===totalSets?c.success:c.primary,borderRadius:3,transition:"width 0.4s"}}/>
-      </div>
-      <div style={{display:"flex",gap:7}}>
-        <button onClick={togglePause} style={{background:w.paused?c.primaryDim:"transparent",color:w.paused?c.primary:c.textSecondary,border:`1px solid ${w.paused?c.primary+"55":c.border}`,borderRadius:8,padding:"6px 14px",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",gap:5}}>{w.paused?<>{Ic.play} {t.resume}</>:<>{Ic.pause} {t.pause}</>}</button>
-        <button onClick={()=>setActiveWorkout(null)} style={{background:"none",border:`1px solid ${c.border}`,color:c.textSecondary,borderRadius:8,padding:"6px 11px",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>✕ {t.cancelWorkout}</button>
-      </div>
-    </div>
-
-    {/* ── Warm-up Section ── */}
-    {w.warmup.enabled&&!w.warmup.done&&(()=>{
-      const wuColor=getGroupColor('warm-up');
-      return(
-      <div style={{marginBottom:16}}>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-          <span style={{fontSize:13}}>{getGroupEmoji('warm-up')}</span>
-          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:wuColor.accent,letterSpacing:2,textTransform:"uppercase"}}>{t.warmup}</span>
-          <div style={{flex:1,height:1,background:wuColor.border}}/>
-        </div>
-        <div style={{background:c.card,border:`1.5px solid ${wuColor.border}`,borderLeft:`4px solid ${wuColor.accent}`,borderRadius:"0 14px 14px 0",padding:"14px 18px"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:13,fontWeight:600,color:warmupDone?c.success:c.textPrimary}}>{t.warmup}</span>
-              {warmupDone&&<span style={{fontSize:9,background:c.successDim,color:c.success,padding:"2px 7px",borderRadius:20,fontWeight:700}}>{t.targetReached}</span>}
-            </div>
-            <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:14,color:warmupDone?c.success:wuColor.accent,fontWeight:600}}>{fmtMin(w.elapsed)}</span>
-              <span style={{fontSize:11,color:c.textMuted}}>/</span>
-              <div style={{display:"flex",alignItems:"center",gap:4}}>
-                <input type="number" min="1" max="60" value={Math.max(1,Math.round(w.warmup.target/60))} onChange={e=>setActiveWorkout(p=>({...p,warmup:{...p.warmup,target:Math.max(60,(parseInt(e.target.value)||1)*60)}}))} style={{width:36,background:c.inputBg,border:`1px solid ${c.borderMid}`,borderRadius:6,padding:"3px 5px",color:c.textPrimary,fontSize:12,fontFamily:"'JetBrains Mono',monospace",textAlign:"center"}}/>
-                <span style={{fontSize:11,color:c.textMuted}}>{t.minShort}</span>
+  return (
+    <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+      {/* Left rail — plan list */}
+      <div style={{ width: 280, borderRight: `1px solid ${c.border}`, overflowY: 'auto', padding: '28px 0' }}>
+        <div style={{ padding: '0 20px 16px', fontFamily: c.fontMono, fontSize: 9, color: c.textMute, letterSpacing: 2, fontWeight: 700 }}>SELECT PROTOCOL</div>
+        {plans.map((pl, i) => {
+          const active = selId === pl.id;
+          const diffCol = DIFF_COLORS[pl.difficulty] || c.text;
+          return (
+            <div key={pl.id} onClick={() => setSelId(pl.id)} style={{
+              padding: '14px 20px', cursor: 'pointer',
+              borderLeft: `3px solid ${active ? c.primary : 'transparent'}`,
+              background: active ? hexA(c.primary, 0.06) : 'transparent',
+              transition: 'all .12s',
+            }}>
+              <div style={{ fontFamily: c.fontMono, fontSize: 9, color: active ? c.primary : c.textMute, letterSpacing: 1.5, marginBottom: 4, fontWeight: 700 }}>
+                {String(i + 1).padStart(2, '0')} · {pl.code || pl.id}
               </div>
-              <button onClick={()=>setActiveWorkout(p=>({...p,warmup:{...p.warmup,done:true}}))} style={{background:warmupDone?c.success:wuColor.accent,color:"#fff",border:"none",borderRadius:7,padding:"5px 13px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",gap:5}}>{Ic.check} {t.doneBtn}</button>
+              <div style={{ fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 18, color: active ? c.text : c.textDim, letterSpacing: -0.5, textTransform: 'uppercase', lineHeight: 1 }}>
+                {pl.name}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                <span style={{ fontFamily: c.fontMono, fontSize: 9, color: diffCol, letterSpacing: 1, fontWeight: 700 }}>{pl.difficulty || 'INTERMEDIATE'}</span>
+                <span style={{ fontFamily: c.fontMono, fontSize: 9, color: c.textMute, letterSpacing: 1 }}>{pl.exercises.length} EX</span>
+              </div>
             </div>
+          );
+        })}
+      </div>
+
+      {/* Right panel — plan detail */}
+      {sel && (
+        <div style={{ flex: 1, padding: '36px 44px 40px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ marginBottom: 6, fontFamily: c.fontMono, fontSize: 10, color: c.primary, letterSpacing: 2, fontWeight: 700 }}>
+            {sel.code || sel.id} · PROTOCOL BRIEF
           </div>
-          <div style={{height:4,background:c.border,borderRadius:2}}><div style={{height:"100%",width:`${warmupProgress}%`,background:warmupDone?c.success:wuColor.accent,borderRadius:2,transition:"width 1s linear"}}/></div>
+          <h2 style={{ fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 52, color: c.text, textTransform: 'uppercase', letterSpacing: -2, lineHeight: 0.9, marginBottom: 10 }}>
+            {sel.name}
+          </h2>
+          {sel.tag && (
+            <div style={{ fontFamily: c.fontMono, fontSize: 11, color: c.textDim, letterSpacing: 1, marginBottom: 20 }}>{sel.tag}</div>
+          )}
+
+          {/* Stats row */}
+          <div style={{ display: 'flex', gap: 28, padding: '18px 0', borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`, marginBottom: 24 }}>
+            {[
+              { v: sel.exercises.length, l: 'EXERCISES' },
+              { v: totalSets, l: 'TOTAL SETS' },
+              { v: `~${estMin}m`, l: 'EST. TIME' },
+              { v: `+${xpReward}`, l: 'XP REWARD', hi: true },
+            ].map((s, i) => (
+              <div key={i}>
+                <div style={{ fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 32, color: s.hi ? c.primary : c.text, lineHeight: 0.9, letterSpacing: -1 }}>{s.v}</div>
+                <div style={{ fontFamily: c.fontMono, fontSize: 8.5, color: c.textMute, letterSpacing: 1.5, marginTop: 4, fontWeight: 700 }}>{s.l}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Exercise list */}
+          <div style={{ flex: 1, marginBottom: 28 }}>
+            {sel.exercises.map((ex, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 14, padding: '9px 0', borderBottom: `1px solid ${hexA(c.border, 0.5)}` }}>
+                <span style={{ fontFamily: c.fontMono, fontSize: 9, color: c.primary, letterSpacing: 1.5, fontWeight: 700, width: 20 }}>{String(i + 1).padStart(2, '0')}</span>
+                <span style={{ fontFamily: c.fontMono, fontSize: 12, color: c.text, flex: 1, letterSpacing: 0.5 }}>{ex.name}</span>
+                <span style={{ fontFamily: c.fontMono, fontSize: 10, color: c.textDim, letterSpacing: 1 }}>
+                  {ex.sets || 3} × {ex.reps || '—'}
+                </span>
+                <span style={{ fontFamily: c.fontMono, fontSize: 9, color: c.textMute, letterSpacing: 1 }}>{ex.rest || 60}s</span>
+              </div>
+            ))}
+          </div>
+
+          <button onClick={() => onStartPlan(sel)} style={{
+            alignSelf: 'flex-start',
+            background: c.primary, color: c.primaryInk, border: 'none',
+            padding: '14px 40px',
+            fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 18, letterSpacing: 1,
+            textTransform: 'uppercase', cursor: 'pointer',
+            position: 'relative',
+          }}>
+            ▶ INITIATE PROTOCOL
+            <CornerFrame c={c} color={c.primaryInk} sz={6} thk={1.5} />
+          </button>
         </div>
-      </div>);
-    })()}
+      )}
+    </div>
+  );
+}
 
-    {/* ── Muscle Group Sections ── */}
-    {grouped.map(({group,exercises:groupExs})=>{
-      const gc=getGroupColor(group);
-      const emoji=getGroupEmoji(group);
-      return(
-        <div key={group} style={{marginBottom:20}}>
-          {/* Section Header */}
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-            <span style={{fontSize:13}}>{emoji}</span>
-            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:gc.accent,letterSpacing:2,textTransform:"uppercase"}}>{group}</span>
-            <div style={{flex:1,height:1,background:gc.border}}/>
-          </div>
+// ── Active Workout ────────────────────────────────────────────────────────────
 
-          {/* Exercise Cards */}
-          {groupExs.map(ex=>{
-            const exIdx=ex._exIdx;
-            const allExDone=ex.sets.every(s=>s.done);
-            const doneCount=ex.sets.filter(s=>s.done).length;
-            const isActive=exIdx===w.currentExIdx&&!allExDone;
-            const isResting=w.restTimer&&w.restTimer.exIdx===exIdx;
-            const isUpcoming=exIdx>w.currentExIdx&&!allExDone;
+function ActiveWorkout({ c, w, setW, checkSet, updateSet, onExit, finishWorkout, allSetsDone, formatTime }) {
+  const totalSets = w.exercises.reduce((a, e) => a + e.sets.length, 0);
+  const doneSets = w.exercises.reduce((a, e) => a + e.sets.filter(s => s.done).length, 0);
+  const progress = totalSets ? (doneSets / totalSets) : 0;
 
-            return(
-              <div key={ex.id||exIdx} style={{
-                background:isActive?gc.dim:allExDone?c.successDim:c.card,
-                border:`1.5px solid ${isActive?gc.border:allExDone?c.success+"55":c.border}`,
-                borderLeft:`4px solid ${isActive?gc.accent:allExDone?c.success:c.border}`,
-                borderRadius:"0 14px 14px 0",
-                padding:allExDone?"12px 16px":"16px 18px",
-                marginBottom:8,
-                transition:"all 0.2s",
-                opacity:isUpcoming?0.5:1,
+  const curEx = w.exercises[w.currentExIdx] || w.exercises[0];
+  const curDone = curEx ? curEx.sets.filter(s => s.done).length : 0;
+
+  const combo = w.combo || 0;
+  const xp = w.xp || 0;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', position: 'relative' }}>
+      {/* ── Top HUD bar ── */}
+      <div style={{
+        flexShrink: 0, borderBottom: `1px solid ${c.border}`,
+        background: c.surface, padding: '0 28px',
+        display: 'flex', alignItems: 'center', gap: 0, height: 52,
+      }}>
+        {/* Plan name */}
+        <div style={{ flex: 1, fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 16, color: c.text, letterSpacing: -0.3, textTransform: 'uppercase' }}>
+          {w.planName}
+        </div>
+
+        {/* Stats cluster */}
+        <div style={{ display: 'flex', height: '100%', borderLeft: `1px solid ${c.border}` }}>
+          {[
+            { l: 'ELAPSED', v: formatTime ? formatTime(w.elapsed || 0) : '00:00:00', hi: w.paused },
+            { l: 'XP', v: `+${xp}`, hi: true },
+            { l: 'COMBO', v: `×${combo}`, hi: combo > 1 },
+            { l: 'PROGRESS', v: `${doneSets}/${totalSets}` },
+          ].map((s, i) => (
+            <div key={i} style={{
+              padding: '0 22px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+              borderRight: `1px solid ${c.border}`, gap: 1,
+            }}>
+              <div style={{ fontFamily: c.fontMono, fontSize: 9, color: c.textMute, letterSpacing: 1.5, fontWeight: 700 }}>{s.l}</div>
+              <div style={{ fontFamily: s.l === 'ELAPSED' ? c.fontMono : c.fontDisp, fontStyle: s.l !== 'ELAPSED' ? 'italic' : 'normal', fontWeight: 900, fontSize: s.l === 'ELAPSED' ? 14 : 18, color: s.hi ? c.primary : c.text, letterSpacing: s.l === 'ELAPSED' ? 1 : -0.5, lineHeight: 1 }}>{s.v}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 16 }}>
+          <button onClick={() => setW(p => ({ ...p, paused: !p.paused }))} style={{
+            background: 'transparent', border: `1px solid ${c.border}`, color: c.textDim,
+            padding: '6px 12px', fontFamily: c.fontMono, fontSize: 10, letterSpacing: 1,
+            cursor: 'pointer', fontWeight: 700,
+          }}>{w.paused ? '▶ RESUME' : '⏸ PAUSE'}</button>
+          <button onClick={onExit} style={{
+            background: 'transparent', border: `1px solid ${c.border}`, color: c.textMute,
+            padding: '6px 10px', fontFamily: c.fontMono, fontSize: 10, letterSpacing: 1,
+            cursor: 'pointer',
+          }}>✕</button>
+        </div>
+      </div>
+
+      {/* ── Segment progress bar ── */}
+      <div style={{ flexShrink: 0, height: 4, display: 'flex', gap: 1, background: c.bg }}>
+        {w.exercises.map((ex, i) => {
+          const exDone = ex.sets.filter(s => s.done).length;
+          const exTotal = ex.sets.length;
+          const isCur = i === w.currentExIdx;
+          return (
+            <div key={i} style={{ flex: 1, height: '100%', background: hexA(c.primary, 0.15), position: 'relative', overflow: 'hidden' }}>
+              <div style={{
+                position: 'absolute', inset: 0, width: exTotal ? `${(exDone / exTotal) * 100}%` : '0%',
+                background: isCur ? c.primary : hexA(c.primary, 0.5),
+                transition: 'width .3s',
+              }} />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── Main area ── */}
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
+        {/* Exercise queue — left rail */}
+        <div style={{ width: 240, borderRight: `1px solid ${c.border}`, overflowY: 'auto', padding: '16px 0', flexShrink: 0 }}>
+          {w.exercises.map((ex, i) => {
+            const done = ex.sets.every(s => s.done);
+            const active = i === w.currentExIdx && !done;
+            const doneCount = ex.sets.filter(s => s.done).length;
+            return (
+              <div key={i} style={{
+                padding: '10px 16px',
+                borderLeft: `2px solid ${active ? c.primary : done ? hexA(c.success, 0.5) : 'transparent'}`,
+                background: active ? hexA(c.primary, 0.05) : 'transparent',
+                opacity: i > w.currentExIdx && !done ? 0.45 : 1,
               }}>
-                {/* Exercise Header */}
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:allExDone?0:8}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0}}>
-                    <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:18,height:18,flexShrink:0,color:allExDone?c.success:isActive?gc.accent:c.textMuted,transition:"color 0.2s"}}>
-                      {allExDone?Ic.check:<KIcon.dumbbell color={isActive?gc.accent:c.textMuted} size={16}/>}
-                    </span>
-                    <span style={{
-                      fontFamily:"'Barlow Condensed',sans-serif",fontSize:17,fontWeight:700,
-                      color:isActive?gc.accent:allExDone?c.success:c.textSecondary,
-                      textDecoration:allExDone?"line-through":"none",
-                    }}>{ex.name}</span>
-                    {isActive&&<span style={{fontSize:9,background:gc.dim,color:gc.accent,padding:"2px 8px",borderRadius:20,fontWeight:800,letterSpacing:1,border:`1px solid ${gc.border}`}}>ACTIVE</span>}
-                    {allExDone&&<span style={{fontSize:9,background:c.successDim,color:c.success,padding:"2px 8px",borderRadius:20,fontWeight:800,display:"inline-flex",alignItems:"center",gap:4}}><span style={{display:"inline-flex"}}>{Ic.check}</span>{t.doneLabel||"DONE"}</span>}
-                  </div>
-                  <span style={{fontSize:11,color:c.textMuted,fontFamily:"'JetBrains Mono',monospace",flexShrink:0}}>{doneCount}/{ex.sets.length}</span>
+                <div style={{ fontFamily: c.fontMono, fontSize: 8.5, color: active ? c.primary : done ? c.success : c.textMute, letterSpacing: 1.5, fontWeight: 700, marginBottom: 3 }}>
+                  {String(i + 1).padStart(2, '0')} {done ? '✓' : active ? '▶' : '·'}
                 </div>
-
-                {/* Instruction (active only) */}
-                {isActive&&ex.instruction&&(
-                  <p style={{fontSize:12.5,color:c.textSecondary,lineHeight:1.6,margin:"0 0 12px",padding:"8px 12px",background:c.bg,borderRadius:8,borderLeft:`3px solid ${gc.accent}44`}}>{ex.instruction}</p>
-                )}
-
-                {/* Segmented Progress Bar */}
-                {!allExDone&&(isActive||isUpcoming)&&(
-                  <div style={{display:"flex",gap:3,marginBottom:isActive?10:6}}>
-                    {ex.sets.map((s,si)=>(
-                      <div key={si} style={{flex:1,height:4,borderRadius:2,background:s.done?gc.accent:`${gc.accent}22`,transition:"background 0.3s"}}/>
-                    ))}
-                  </div>
-                )}
-
-                {/* Set counter */}
-                {isActive&&!allExDone&&(
-                  <p style={{fontSize:11,color:gc.accent,fontWeight:600,marginBottom:8,fontFamily:"'JetBrains Mono',monospace"}}>
-                    {t.setOfLabel} {doneCount+1} {t.ofLabel} {ex.sets.length}
-                  </p>
-                )}
-
-                {/* Set Inputs (active only) */}
-                {isActive&&!allExDone&&(
-                  <div style={{display:"flex",flexDirection:"column",gap:7}}>
-                    {ex.sets.map((s,si)=>(
-                      <div key={si} style={{display:"flex",alignItems:"center",gap:8}}>
-                        <span style={{fontSize:10,color:s.done?c.success:gc.accent,width:22,textAlign:"right",flexShrink:0,fontWeight:600,fontFamily:"'JetBrains Mono',monospace"}}>S{si+1}</span>
-                        <input type="number" value={s.reps} onChange={e=>updateSet(exIdx,si,"reps",e.target.value)} disabled={s.done} style={{width:50,background:s.done?c.border:c.inputBg,border:`1px solid ${s.done?c.border:c.borderMid}`,borderRadius:6,padding:"6px 7px",color:c.textPrimary,fontSize:12,textAlign:"center",fontFamily:"'JetBrains Mono',monospace",opacity:s.done?0.4:1}}/>
-                        <span style={{fontSize:10,color:c.textMuted}}>{t.repsLabel}</span>
-                        <input type="number" value={s.weight} onChange={e=>updateSet(exIdx,si,"weight",e.target.value)} disabled={s.done} placeholder="0" style={{width:56,background:s.done?c.border:c.inputBg,border:`1px solid ${s.done?c.border:c.borderMid}`,borderRadius:6,padding:"6px 7px",color:c.textPrimary,fontSize:12,textAlign:"center",fontFamily:"'JetBrains Mono',monospace",opacity:s.done?0.4:1}}/>
-                        <span style={{fontSize:10,color:c.textMuted}}>{t.kgLabel}</span>
-                        <button type="button" onClick={()=>checkSet(exIdx,si)} disabled={s.done} style={{width:32,height:32,borderRadius:8,border:`2px solid ${s.done?c.success:gc.accent}`,background:s.done?c.success:gc.dim,cursor:s.done?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:s.done?"#fff":gc.accent,transition:"all 0.15s",flexShrink:0,padding:0}}>{s.done&&Ic.check}</button>
-                      </div>
-                    ))}
-
-                    {/* Inline Rest Timer */}
-                    {isResting&&(
-                      <div style={{marginTop:8,background:c.bg,borderRadius:12,padding:"16px 18px",border:`1.5px solid ${gc.border}`,animation:"restPulse 2s infinite"}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                          <span style={{fontSize:11,color:gc.accent,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase"}}>{t.restLabel}{w.paused?" (paused)":""}</span>
-                          <button onClick={()=>setActiveWorkout(p=>({...p,restTimer:null}))} style={{background:gc.dim,border:`1px solid ${gc.border}`,color:gc.accent,borderRadius:8,padding:"5px 14px",fontSize:12,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>
-                            {t.skipRestBtn||t.skip} →
-                          </button>
-                        </div>
-                        <div style={{textAlign:"center",marginBottom:12}}>
-                          <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:42,fontWeight:500,color:gc.accent,letterSpacing:2}}>
-                            {w.restTimer.remaining}s
-                          </span>
-                        </div>
-                        <div style={{height:5,background:c.border,borderRadius:3}}>
-                          <div style={{height:"100%",width:`${(w.restTimer.remaining/w.restTimer.total)*100}%`,background:gc.accent,borderRadius:3,transition:"width 1s linear"}}/>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Upcoming exercise summary */}
-                {isUpcoming&&(
-                  <p style={{fontSize:11,color:c.textMuted,marginTop:2}}>
-                    {ex.sets.length} {t.setsLabel} × {ex.sets[0]?.reps||"—"} {t.repsLabel} · {ex.rest}s {t.restLabel?.toLowerCase()||"rest"}
-                  </p>
-                )}
+                <div style={{ fontFamily: c.fontMono, fontSize: 11, color: done ? c.textDim : active ? c.text : c.textDim, letterSpacing: 0.3, lineHeight: 1.3 }}>{ex.name}</div>
+                <div style={{ fontFamily: c.fontMono, fontSize: 9, color: c.textMute, marginTop: 3 }}>
+                  {doneCount}/{ex.sets.length} SETS
+                </div>
               </div>
             );
           })}
         </div>
-      );
-    })}
 
-    {/* ── Finish Button ── */}
-    <button onClick={finishWorkout} disabled={!allSetsDone} style={{width:"100%",background:allSetsDone?c.primary:"transparent",color:allSetsDone?"#fff":c.textMuted,border:`1.5px solid ${allSetsDone?c.primary:c.border}`,borderRadius:12,padding:"14px",fontSize:15,fontWeight:900,fontFamily:"'Barlow Condensed',sans-serif",cursor:allSetsDone?"pointer":"not-allowed",marginTop:5,transition:"all 0.3s",boxShadow:allSetsDone?`0 4px 16px ${c.primary}44`:"none"}}>{allSetsDone?"✓ ":""}{t.finishWorkout}</button>
-  </div>);
+        {/* Main exercise display */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '28px 36px 40px' }}>
+          {curEx && (
+            <>
+              {/* Exercise name */}
+              <div style={{ marginBottom: 4, fontFamily: c.fontMono, fontSize: 9, color: c.primary, letterSpacing: 2, fontWeight: 700 }}>
+                EX {String(w.currentExIdx + 1).padStart(2, '0')} · SET {curDone + 1} OF {curEx.sets.length}
+              </div>
+              <h2 style={{
+                fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900,
+                fontSize: Math.max(28, Math.min(52, 680 / Math.max(curEx.name.length, 1))),
+                color: c.text, textTransform: 'uppercase', letterSpacing: -1.5, lineHeight: 0.9,
+                marginBottom: 8,
+              }}>{curEx.name}</h2>
+
+              {curEx.instruction && (
+                <div style={{ fontFamily: c.fontMono, fontSize: 11, color: c.textDim, letterSpacing: 0.5, marginBottom: 20, maxWidth: 480, lineHeight: 1.5 }}>
+                  {curEx.instruction}
+                </div>
+              )}
+
+              {/* Set rows */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 20, maxWidth: 500 }}>
+                {curEx.sets.map((s, si) => (
+                  <SetRow key={si} c={c} s={s} si={si} isNext={si === curDone} onCheck={() => checkSet(w.currentExIdx, si)} onUpdate={(f, v) => updateSet(w.currentExIdx, si, f, v)} />
+                ))}
+              </div>
+
+              {/* Rest note */}
+              <div style={{ marginTop: 20, fontFamily: c.fontMono, fontSize: 10, color: c.textMute, letterSpacing: 1.5 }}>
+                REST BETWEEN SETS · {curEx.rest || 60}s
+              </div>
+            </>
+          )}
+
+          {/* Finish button */}
+          <div style={{ marginTop: 36 }}>
+            <button onClick={finishWorkout} disabled={!allSetsDone} style={{
+              background: allSetsDone ? c.primary : 'transparent',
+              color: allSetsDone ? c.primaryInk : c.textMute,
+              border: `1px solid ${allSetsDone ? c.primary : c.border}`,
+              padding: '14px 36px',
+              fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 18,
+              letterSpacing: 0.5, textTransform: 'uppercase', cursor: allSetsDone ? 'pointer' : 'not-allowed',
+              transition: 'all .2s', position: 'relative',
+            }}>
+              {allSetsDone ? '✓ COMPLETE SESSION' : `${totalSets - doneSets} SETS REMAINING`}
+              {allSetsDone && <CornerFrame c={c} color={c.primaryInk} sz={6} />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Rest overlay ── */}
+      {w.restTimer && (
+        <RestOverlay
+          c={c}
+          rest={w.restTimer}
+          nextEx={w.exercises[w.currentExIdx]}
+          combo={combo}
+          lastXp={w.lastXp || 0}
+          onSkip={() => setW(p => ({ ...p, restTimer: null }))}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Set Row ──────────────────────────────────────────────────────────────────
+
+function SetRow({ c, s, si, isNext, onCheck, onUpdate }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '10px 16px',
+      background: s.done ? hexA(c.success, 0.06) : isNext ? hexA(c.primary, 0.06) : c.surface,
+      border: `1px solid ${s.done ? hexA(c.success, 0.25) : isNext ? hexA(c.primary, 0.3) : c.border}`,
+      opacity: !isNext && !s.done ? 0.5 : 1,
+      transition: 'all .15s',
+    }}>
+      <span style={{ fontFamily: c.fontMono, fontSize: 10, color: s.done ? c.success : isNext ? c.primary : c.textMute, fontWeight: 700, letterSpacing: 1, width: 24 }}>
+        S{si + 1}
+      </span>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <input type="number" value={s.reps} onChange={e => onUpdate('reps', e.target.value)} disabled={s.done}
+          style={{ width: 52, background: c.bg, border: `1px solid ${c.border}`, color: c.text, padding: '5px 8px', fontFamily: c.fontMono, fontSize: 13, textAlign: 'center', fontWeight: 700, opacity: s.done ? 0.5 : 1 }} />
+        <span style={{ fontFamily: c.fontMono, fontSize: 9, color: c.textMute, letterSpacing: 1 }}>REPS</span>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <input type="number" value={s.weight || ''} onChange={e => onUpdate('weight', e.target.value)} disabled={s.done} placeholder="—"
+          style={{ width: 60, background: c.bg, border: `1px solid ${c.border}`, color: c.text, padding: '5px 8px', fontFamily: c.fontMono, fontSize: 13, textAlign: 'center', fontWeight: 700, opacity: s.done ? 0.5 : 1 }} />
+        <span style={{ fontFamily: c.fontMono, fontSize: 9, color: c.textMute, letterSpacing: 1 }}>KG</span>
+      </div>
+
+      <button onClick={onCheck} disabled={s.done} style={{
+        marginLeft: 'auto', width: 36, height: 36,
+        background: s.done ? hexA(c.success, 0.2) : isNext ? c.primary : 'transparent',
+        border: `1px solid ${s.done ? c.success : isNext ? c.primary : c.border}`,
+        color: s.done ? c.success : isNext ? c.primaryInk : c.textMute,
+        cursor: s.done ? 'default' : 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: c.fontMono, fontSize: 14, fontWeight: 700,
+        transition: 'all .12s',
+      }}>
+        {s.done ? '✓' : '→'}
+      </button>
+    </div>
+  );
+}
+
+// ── Rest Overlay ─────────────────────────────────────────────────────────────
+
+function RestOverlay({ c, rest, nextEx, combo, lastXp, onSkip }) {
+  const pct = rest.total ? (rest.remaining / rest.total) : 0;
+  const urgent = rest.remaining <= 5;
+
+  return (
+    <div style={{
+      position: 'absolute', inset: 0, zIndex: 100,
+      background: hexA(c.bg, 0.96),
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      gap: 0,
+    }}>
+      <div style={{ fontFamily: c.fontMono, fontSize: 10, color: c.textMute, letterSpacing: 3, marginBottom: 20, fontWeight: 700 }}>REST INTERVAL</div>
+
+      {/* Giant countdown */}
+      <div style={{
+        fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900,
+        fontSize: 120, color: urgent ? c.danger : c.primary,
+        lineHeight: 0.85, letterSpacing: -6,
+        transition: 'color .3s',
+      }}>{rest.remaining}</div>
+
+      <div style={{ fontFamily: c.fontMono, fontSize: 11, color: c.textMute, letterSpacing: 2, marginBottom: 32, marginTop: 8 }}>SECONDS</div>
+
+      {/* Progress bar */}
+      <div style={{ width: 320, height: 3, background: hexA(c.text, 0.1), marginBottom: 32 }}>
+        <div style={{ height: '100%', width: `${pct * 100}%`, background: urgent ? c.danger : c.primary, transition: 'width 1s linear, background .3s' }} />
+      </div>
+
+      {/* XP / combo earned */}
+      {lastXp > 0 && (
+        <div style={{ display: 'flex', gap: 20, marginBottom: 28 }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 28, color: c.primary, letterSpacing: -1 }}>+{lastXp}</div>
+            <div style={{ fontFamily: c.fontMono, fontSize: 9, color: c.textMute, letterSpacing: 1.5, fontWeight: 700 }}>XP EARNED</div>
+          </div>
+          {combo > 1 && (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 28, color: c.warn, letterSpacing: -1 }}>×{combo}</div>
+              <div style={{ fontFamily: c.fontMono, fontSize: 9, color: c.textMute, letterSpacing: 1.5, fontWeight: 700 }}>COMBO</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Next up */}
+      {nextEx && (
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div style={{ fontFamily: c.fontMono, fontSize: 9, color: c.textMute, letterSpacing: 2, fontWeight: 700, marginBottom: 6 }}>NEXT EXERCISE</div>
+          <div style={{ fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 22, color: c.text, textTransform: 'uppercase', letterSpacing: -0.5 }}>{nextEx.name}</div>
+        </div>
+      )}
+
+      <button onClick={onSkip} style={{
+        background: 'transparent', border: `1px solid ${c.border}`,
+        color: c.textDim, padding: '10px 28px',
+        fontFamily: c.fontMono, fontSize: 10, letterSpacing: 2, fontWeight: 700,
+        cursor: 'pointer', textTransform: 'uppercase',
+      }}>SKIP REST →</button>
+    </div>
+  );
 }

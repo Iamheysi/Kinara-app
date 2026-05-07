@@ -1,7 +1,43 @@
-import { BurgerBtn } from './BurgerBtn.jsx';
+// Header — 44px top bar (gym-industrial)
 
-export function Header({running,time,formatTime,setTab,menuOpen,setMenuOpen,c,t}){
-  const h=new Date().getHours();const g=h<12?t.goodMorning:h<17?t.goodAfternoon:t.goodEvening;
-  const ds=new Date().toLocaleDateString("en-GB",{weekday:"long",month:"long",day:"numeric"});
-  return(<header style={{height:56,background:c.surface,borderBottom:`1px solid ${c.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 26px",flexShrink:0,zIndex:50}} className="kb-header-pad"><div><p style={{fontSize:11,color:c.textSecondary}}>{ds}</p><p style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:c.textPrimary,lineHeight:1.1}}>{g}<span style={{color:c.primary}}>.</span></p></div><div style={{display:"flex",alignItems:"center",gap:9}}>{running&&(<div onClick={()=>setTab("log")} style={{display:"flex",alignItems:"center",gap:7,background:c.primaryDim,border:`1px solid ${c.primary}33`,borderRadius:9,padding:"5px 12px",cursor:"pointer"}}><span style={{width:7,height:7,borderRadius:"50%",background:c.primary,animation:"pulse 1.5s infinite"}}/><span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:c.primaryLight}}>{formatTime(time)}</span></div>)}<BurgerBtn open={menuOpen} onClick={()=>setMenuOpen(!menuOpen)} c={c}/></div></header>);
+import { fmtNum } from '../utils.js';
+
+export function Header({ c, theme, tab, running, elapsed, formatTime, streak, weeklyRank }) {
+  const now = new Date();
+  const week = Math.ceil(((now - new Date(now.getFullYear(), 0, 1)) / 86400000 + 1) / 7);
+  const sessionCount = 1; // incremented from real session count in parent
+
+  return (
+    <div style={{
+      height: 44, flexShrink: 0,
+      borderBottom: `1px solid ${c.border}`,
+      background: c.surface,
+      display: 'flex', alignItems: 'center',
+      fontFamily: c.fontMono, fontSize: 10.5, letterSpacing: 1.3,
+    }}>
+      <div style={{ padding: '0 18px', height: '100%', display: 'flex', alignItems: 'center', gap: 10, borderRight: `1px solid ${c.border}` }}>
+        <span style={{ width: 8, height: 8, background: c.primary, display: 'inline-block' }} />
+        <span style={{ color: c.text, fontWeight: 700, letterSpacing: 2 }}>
+          KINARA<span style={{ color: c.textMute }}> · {(theme || 'COBALT').toUpperCase()}</span>
+        </span>
+      </div>
+      <div style={{ padding: '0 18px', height: '100%', display: 'flex', alignItems: 'center', gap: 22, flex: 1, color: c.textDim }}>
+        <span>WK <span style={{ color: c.text, fontWeight: 700 }}>{String(week).padStart(2, '0')}</span></span>
+        <span>·</span>
+        <span>STREAK <span style={{ color: c.text, fontWeight: 700 }}>{streak || 0}</span></span>
+        {running && (<>
+          <span>·</span>
+          <span style={{ color: c.success, fontWeight: 700, animation: 'pulse 1.4s infinite' }}>
+            ● {formatTime ? formatTime(elapsed || 0) : '00:00:00'}
+          </span>
+        </>)}
+        <span>·</span>
+        <span>TAB <span style={{ color: c.text, fontWeight: 700, textTransform: 'uppercase' }}>{tab}</span></span>
+      </div>
+      <div style={{ padding: '0 18px', height: '100%', display: 'flex', alignItems: 'center', gap: 14, borderLeft: `1px solid ${c.border}` }}>
+        {weeklyRank && <span style={{ color: c.primary, fontWeight: 700 }}>RANK #{weeklyRank}</span>}
+        <span style={{ color: running ? c.success : c.textMute }}>● {running ? 'LIVE' : 'READY'}</span>
+      </div>
+    </div>
+  );
 }

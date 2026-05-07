@@ -1,36 +1,265 @@
-import { Ic } from '../icons.jsx';
-import { StatCard } from './StatCard.jsx';
-import { UpNextWidget } from './UpNextWidget.jsx';
-import { calcStreak, localDateStr } from '../utils.js';
-import { QUOTES } from '../constants.js';
+// HomeTab — editorial magazine dashboard
 
-export function HomeTab({c,t,lang,setTab,running,sessions,restDaysLog,todayActivity,logRestDay,plans,schedule,setSchedule,onSelectPlan,profileName}){
-  const isRu=lang==="ru";
-  const streak=calcStreak(sessions,restDaysLog,schedule);const quote=QUOTES[new Date().getDate()%QUOTES.length];
-  const h=new Date().getHours();
-  const greeting=h<12?t.goodMorning:h<18?t.goodAfternoon:t.goodEvening;
-  const firstName=profileName&&profileName!=="My Profile"?profileName.split(" ")[0]:"";
-  const heroTitle=sessions.length===0?(isRu?"Готовы начать":"Ready to start"):firstName?`${greeting}, ${firstName}`:`${greeting}`;
-  const exPRs={};sessions.forEach(s=>s.exercises.forEach(ex=>{const max=Math.max(...ex.sets.map(s2=>parseFloat(s2.weight)||0),0);if(max>0&&(!exPRs[ex.name]||max>exPRs[ex.name]))exPRs[ex.name]=max;}));
-  const dayH=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(6-i));const ds=localDateStr(d);const isW=sessions.some(s=>s.date===ds);const isR=restDaysLog.includes(ds);return{v:isW?100:isR?50:0,d:"SMTWTFS"[d.getDay()],isToday:i===6,isRest:isR};});
-  const stats=[{label:t.currentStreak,value:String(streak),unit:t.days,accent:c.primary,info:t.streakHomeInfo},{label:t.totalWorkouts,value:String(sessions.length),unit:t.allTime,accent:c.textPrimary,info:t.totalWorkoutsInfo},{label:t.personalRecords,value:String(Object.keys(exPRs).length),unit:t.set,accent:c.primary,info:t.prsHomeInfo},{label:t.restDays,value:String(restDaysLog.length),unit:t.logged,accent:c.textPrimary,info:t.restDaysInfo}];
-  return(<div style={{maxWidth:1200,margin:"0 auto"}}>
-    <div className="kb-hero" style={{position:"relative",borderRadius:18,overflow:"hidden",marginBottom:20,height:150,background:c.panelHero}}><div style={{position:"absolute",inset:0,backgroundImage:c.grain,opacity:0.8}}/><svg style={{position:"absolute",right:0,top:0,opacity:0.06}} width="280" height="150" viewBox="0 0 280 150"><line x1="280" y1="0" x2="80" y2="150" stroke={c.primary} strokeWidth="1"/><circle cx="220" cy="75" r="55" stroke={c.primary} strokeWidth="0.5" fill="none"/></svg><div style={{position:"absolute",inset:0,padding:"20px 28px",display:"flex",flexDirection:"column",justifyContent:"flex-end"}}><div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between"}}><div><p className="kb-hero-text" style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:44,fontWeight:900,color:c.textPrimary,lineHeight:0.95}}>{heroTitle}<span style={{color:c.primary}}>.</span></p><p style={{fontSize:12.5,color:c.textSecondary,fontStyle:"italic",marginTop:6}}>"{quote}"</p></div>{running&&<div onClick={()=>setTab("log")} style={{display:"flex",alignItems:"center",gap:8,background:"rgba(0,0,0,0.35)",border:`1px solid ${c.primary}44`,borderRadius:10,padding:"8px 14px",cursor:"pointer",backdropFilter:"blur(8px)"}}><span style={{width:7,height:7,borderRadius:"50%",background:c.primary,animation:"pulse 1.5s infinite"}}/><span style={{fontSize:12.5,color:c.primary,fontWeight:600}}>Active →</span></div>}</div></div></div>
-    <div className="kb-home-stats kb-stat4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:11,marginBottom:16}}>{stats.map(s=><StatCard key={s.label} {...s} c={c}/>)}</div>
-    <div className="kb-home-bottom" style={{display:"grid",gridTemplateColumns:"1fr 1.2fr 1.8fr",gap:14}}>
-      <div style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:13,padding:"17px 17px 15px",display:"flex",flexDirection:"column",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
-        <p style={{fontSize:9.5,color:c.textMuted,letterSpacing:1.7,textTransform:"uppercase",fontWeight:700,marginBottom:11}}>{t.quickStart}</p>
-        <button onClick={()=>setTab("log")} disabled={todayActivity==="rest"} style={{width:"100%",background:todayActivity==="rest"?c.border:c.primary,color:todayActivity==="rest"?c.textMuted:"#fff",border:"none",borderRadius:9,padding:"11px 14px",fontSize:14,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:todayActivity==="rest"?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:7,opacity:todayActivity==="rest"?0.5:1,transition:"all 0.2s",boxShadow:todayActivity==="rest"?"none":`0 3px 12px ${c.primary}44`}}><span style={{display:"flex",alignItems:"center",gap:7}}>{Ic.log} {t.logWorkoutBtn}</span></button>
-        <button onClick={()=>{if(todayActivity===null){logRestDay();setTab("rest");}}} disabled={todayActivity!==null} style={{width:"100%",background:"transparent",color:todayActivity!==null?c.textMuted:c.textSecondary,border:"none",borderRadius:8,padding:"7px",fontSize:12.5,fontFamily:"'DM Sans',sans-serif",cursor:todayActivity!==null?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6,opacity:todayActivity!==null?0.35:0.75}}>{Ic.rest} <span>{t.logRestDay}</span></button>
-        <div style={{height:1,background:c.border,margin:"13px 0 11px"}}/>
-        <p style={{fontSize:9.5,color:c.textMuted,letterSpacing:1.7,textTransform:"uppercase",fontWeight:700,marginBottom:9}}>{t.thisWeek}</p>
-        <svg viewBox="0 0 140 52" width="100%"><line x1="0" y1="42" x2="140" y2="42" stroke={c.border} strokeWidth="1"/>{dayH.map(({v,d,isToday,isRest},i)=>{const bh=v*0.36,x=i*20+2;return(<g key={i}><rect x={x} y={42-bh} width={16} height={bh||1} rx="2.5" fill={v===0?c.border:isRest?c.purple:isToday?c.primary:`${c.primary}60`}/><text x={x+8} y="50" textAnchor="middle" fontSize="8" fill={isToday?c.primary:c.textMuted} fontFamily="DM Sans">{d}</text></g>);})}</svg>
-      </div>
-      <UpNextWidget c={c} t={t} plans={plans} schedule={schedule} setSchedule={setSchedule} onSelectPlan={onSelectPlan}/>
-      <div style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:13,padding:"17px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
-        <p style={{fontSize:9.5,color:c.textMuted,letterSpacing:1.7,textTransform:"uppercase",fontWeight:700,marginBottom:11}}>{t.recentActivity}</p>
-        {sessions.length===0?(<div style={{padding:"24px 0",textAlign:"center"}}><p style={{fontSize:13,color:c.textMuted,marginBottom:4}}>{t.noWorkoutsYet}</p><p style={{fontSize:11.5,color:c.textMuted}}>{t.startFirst}</p></div>):(<div style={{display:"flex",flexDirection:"column",gap:6}}>{sessions.slice(0,5).map((s,i)=>(<div key={s.id} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 10px",background:c.bg,borderRadius:9,border:`1px solid ${c.border}`,transition:"border-color 0.15s"}}><div style={{width:26,height:26,borderRadius:6,background:c.primaryDim,display:"flex",alignItems:"center",justifyContent:"center",color:c.primary,flexShrink:0}}>{Ic.log}</div><div style={{flex:1,minWidth:0}}><p style={{fontSize:12,fontWeight:500,color:c.textPrimary,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.planName}</p><p style={{fontSize:10,color:c.textSecondary}}>{i===0?"Today":s.date} · {Math.round(s.duration/60)} min</p></div><span style={{fontSize:10,color:c.textMuted,flexShrink:0}}>{s.exercises.reduce((a,e)=>a+e.sets.length,0)}s</span></div>))}</div>)}
-      </div>
+import { hexA, fmtNum, fmtTime } from '../utils.js';
+import { getPlanXpReward } from '../constants.js';
+import { PulseBars, Tag, CornerFrame } from './kinara-primitives.jsx';
+
+export function HomeTab({ c, sessions, plans, schedule, streak, levelInfo, setTab, onStartPlan, totalXp }) {
+  const lv = levelInfo || { lvl: 1, name: 'INITIATE', progress: 0, xpToNext: 500, next: { xpReq: 500 } };
+  const todayDow = new Date().getDay();
+  const today = plans.find(p => p.id === schedule[todayDow]) || plans[0];
+  const recent = sessions.slice(0, 5);
+  const weekSessions = sessions.slice(0, 7);
+
+  return (
+    <div style={{ padding: 0, overflowY: 'auto', height: '100%', background: c.bg }}>
+
+      {/* HERO — editorial takeover */}
+      <section style={{
+        position: 'relative', padding: '32px 40px 40px',
+        borderBottom: `1px solid ${c.border}`, background: c.bg, overflow: 'hidden',
+      }}>
+        <div style={{ position: 'absolute', inset: 0, background: c.heroGlow, pointerEvents: 'none' }} />
+
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, position: 'relative' }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <Tag c={c} filled>VOL · 04</Tag>
+              <Tag c={c}>ISSUE {new Date().toISOString().slice(0, 10)}</Tag>
+              <div style={{ flex: 1, height: 1, background: c.borderHi, opacity: 0.3 }} />
+              <span style={{ fontFamily: c.fontMono, fontSize: 10, color: c.textDim, letterSpacing: 1.5 }}>
+                DAY {streak || 0}
+              </span>
+            </div>
+
+            <h1 style={{
+              fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900,
+              fontSize: 110, lineHeight: 0.85, letterSpacing: -4,
+              color: c.text, textTransform: 'uppercase', marginTop: 12,
+            }}>
+              TRAIN<br />
+              <span style={{ color: c.primary }}>HARD.</span><br />
+              <span style={{ WebkitTextStroke: `2px ${c.text}`, color: 'transparent' }}>REST LOUD.</span>
+            </h1>
+
+            <p style={{ fontFamily: c.fontBody, fontSize: 14, color: c.textDim, marginTop: 20, maxWidth: 420, lineHeight: 1.55 }}>
+              {streak > 0 ? `${streak} days on the grind.` : 'Start your streak today.'} One session stands between you and level <strong style={{ color: c.text }}>{lv.next?.name || lv.name}</strong>.
+            </p>
+          </div>
+
+          {/* Motion graphic block */}
+          <div style={{
+            width: 320, flexShrink: 0,
+            border: `1px solid ${c.borderHi}`, background: c.surface,
+            position: 'relative', padding: 18,
+          }}>
+            <CornerFrame c={c} color={c.primary} sz={14} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, fontFamily: c.fontMono, fontSize: 9.5, letterSpacing: 1.5, fontWeight: 700 }}>
+              <span style={{ color: c.primary }}>● WEEKLY VOLUME</span>
+              <span style={{ color: c.textMute }}>LAST 12W</span>
+            </div>
+            <div style={{ height: 100 }}>
+              <PulseBars c={c} seed={3} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', marginTop: 14, borderTop: `1px solid ${c.border}`, paddingTop: 12 }}>
+              {[
+                { v: fmtNum(totalXp || 0), l: 'TOTAL XP', col: c.primary },
+                { v: `${streak || 0}`, l: 'STREAK', col: c.text },
+                { v: `${sessions.length}`, l: 'SESSIONS', col: c.text },
+              ].map((s, i) => (
+                <div key={i} style={{ borderLeft: i > 0 ? `1px solid ${c.border}` : 'none', paddingLeft: i > 0 ? 12 : 0 }}>
+                  <div style={{ fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 26, color: s.col, lineHeight: 0.95, letterSpacing: -0.5 }}>{s.v}</div>
+                  <div style={{ fontFamily: c.fontMono, fontSize: 8, color: c.textMute, letterSpacing: 1.4, marginTop: 3, fontWeight: 700 }}>{s.l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* XP PROGRESS STRIP */}
+      <section style={{
+        padding: '16px 40px', borderBottom: `1px solid ${c.border}`, background: c.surface,
+        display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: 20,
+      }}>
+        <div>
+          <div style={{ fontFamily: c.fontMono, fontSize: 9, color: c.textMute, letterSpacing: 1.5, fontWeight: 700 }}>CURRENT</div>
+          <div style={{ fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 20, color: c.text, letterSpacing: -0.5 }}>
+            LVL {lv.lvl} · <span style={{ color: c.primary }}>{lv.name}</span>
+          </div>
+        </div>
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: c.fontMono, fontSize: 10, color: c.textDim, marginBottom: 6, letterSpacing: 1.2 }}>
+            <span>{fmtNum(totalXp || 0)} XP</span>
+            <span>{fmtNum(lv.next?.xpReq || 0)} XP</span>
+          </div>
+          <div style={{ height: 8, background: c.card, border: `1px solid ${c.border}`, position: 'relative' }}>
+            <div style={{ position: 'absolute', inset: 0, width: `${(lv.progress || 0) * 100}%`, background: c.primary }} />
+            {[0.25, 0.5, 0.75].map(t => (
+              <div key={t} style={{ position: 'absolute', left: `${t * 100}%`, top: 0, bottom: 0, width: 1, background: c.bg, opacity: 0.4 }} />
+            ))}
+          </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontFamily: c.fontMono, fontSize: 9, color: c.textMute, letterSpacing: 1.5, fontWeight: 700 }}>TO NEXT</div>
+          <div style={{ fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 20, color: c.text, letterSpacing: -0.5 }}>
+            {fmtNum(lv.xpToNext || 0)} <span style={{ color: c.primary }}>XP</span>
+          </div>
+        </div>
+      </section>
+
+      {/* TODAY'S PROTOCOL */}
+      {today && (
+        <section style={{ padding: '36px 40px', borderBottom: `1px solid ${c.border}` }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginBottom: 24 }}>
+            <span style={{ fontFamily: c.fontMono, fontSize: 10, color: c.primary, letterSpacing: 2, fontWeight: 700 }}>§.01</span>
+            <h2 style={{ fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 30, letterSpacing: -1, color: c.text, textTransform: 'uppercase' }}>TODAY'S PROTOCOL</h2>
+            <div style={{ flex: 1, height: 1, background: c.borderHi, opacity: 0.25 }} />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 0, border: `1px solid ${c.borderHi}`, background: c.surface }}>
+            <div style={{ padding: '32px 32px 28px', position: 'relative', borderRight: `1px solid ${c.border}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                <div>
+                  <span style={{ fontFamily: c.fontMono, fontSize: 10, color: c.primary, letterSpacing: 2, fontWeight: 700 }}>
+                    PROTOCOL · {today.code || today.id}
+                  </span>
+                  <div style={{ fontFamily: c.fontMono, fontSize: 10, color: c.textMute, letterSpacing: 1.5, marginTop: 4 }}>{today.tag || today.notes}</div>
+                </div>
+                <Tag c={c} filled color={c.warn}>{today.difficulty || 'INTERMEDIATE'}</Tag>
+              </div>
+
+              <h3 style={{
+                fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900,
+                fontSize: 64, lineHeight: 0.9, letterSpacing: -2.5, color: c.text,
+                textTransform: 'uppercase', marginTop: 18,
+              }}>{today.name}</h3>
+
+              <div style={{ display: 'flex', gap: 24, marginTop: 24, paddingTop: 20, borderTop: `1px solid ${c.border}` }}>
+                {[
+                  { v: today.exercises.length, l: 'EXERCISES' },
+                  { v: today.exercises.reduce((a, e) => a + (e.sets || 3), 0), l: 'SETS' },
+                  { v: `~${Math.round(today.exercises.reduce((a, e) => a + (e.rest || 60) * (e.sets || 3), 0) / 60)}m`, l: 'EST. TIME' },
+                  { v: `+${getPlanXpReward(today)}`, l: 'XP REWARD', hi: true },
+                ].map((s, i) => (
+                  <div key={i}>
+                    <div style={{ fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 34, color: s.hi ? c.primary : c.text, letterSpacing: -1, lineHeight: 0.95 }}>{s.v}</div>
+                    <div style={{ fontFamily: c.fontMono, fontSize: 8.5, color: c.textMute, letterSpacing: 1.4, marginTop: 3, fontWeight: 700 }}>{s.l}</div>
+                  </div>
+                ))}
+              </div>
+
+              <button onClick={() => onStartPlan(today)} style={{
+                marginTop: 28, width: '100%',
+                background: c.primary, color: c.primaryInk, border: 'none',
+                padding: '18px 24px',
+                fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 20, letterSpacing: 0.5,
+                textTransform: 'uppercase', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14,
+                borderRadius: 0,
+              }}>
+                ▶ INITIATE SESSION
+                <span style={{ fontFamily: c.fontMono, fontSize: 11, letterSpacing: 2, fontStyle: 'normal', opacity: 0.6, fontWeight: 700 }}>[ENTER]</span>
+              </button>
+            </div>
+
+            <div style={{ padding: '24px 28px' }}>
+              <div style={{ fontFamily: c.fontMono, fontSize: 10, color: c.textMute, letterSpacing: 1.5, fontWeight: 700, marginBottom: 14 }}>· EXERCISE STACK</div>
+              {today.exercises.map((ex, i) => (
+                <div key={ex.id || i} style={{
+                  display: 'grid', gridTemplateColumns: '28px 1fr auto', gap: 12,
+                  padding: '11px 0', borderBottom: i < today.exercises.length - 1 ? `1px solid ${c.border}` : 'none',
+                  alignItems: 'center',
+                }}>
+                  <span style={{ fontFamily: c.fontMono, fontSize: 11, color: c.textMute, letterSpacing: 1, fontWeight: 700 }}>{String(i + 1).padStart(2, '0')}</span>
+                  <span style={{ fontFamily: c.fontDisp, fontSize: 15, fontWeight: 700, color: c.text, letterSpacing: 0.3 }}>{ex.name}</span>
+                  <span style={{ fontFamily: c.fontMono, fontSize: 10, color: c.primary, letterSpacing: 1, fontWeight: 700 }}>{ex.sets} × {ex.reps}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* RECENT LOGS */}
+      {recent.length > 0 && (
+        <section style={{ padding: '36px 40px', borderBottom: `1px solid ${c.border}` }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginBottom: 24 }}>
+            <span style={{ fontFamily: c.fontMono, fontSize: 10, color: c.primary, letterSpacing: 2, fontWeight: 700 }}>§.02</span>
+            <h2 style={{ fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 30, letterSpacing: -1, color: c.text, textTransform: 'uppercase' }}>RECENT LOGS</h2>
+            <div style={{ flex: 1, height: 1, background: c.borderHi, opacity: 0.25 }} />
+          </div>
+
+          <div style={{ border: `1px solid ${c.borderHi}`, background: c.surface }}>
+            <div style={{
+              display: 'grid', gridTemplateColumns: '46px 80px 1fr 80px 100px 70px',
+              padding: '10px 20px', background: c.card, borderBottom: `1px solid ${c.border}`,
+              fontFamily: c.fontMono, fontSize: 9, color: c.textMute, letterSpacing: 1.5, fontWeight: 700,
+            }}>
+              <span>#</span><span>DATE</span><span>PROTOCOL</span><span>TIME</span><span>VOL</span><span>XP</span>
+            </div>
+            {recent.map((s, i) => (
+              <div key={s.id} style={{
+                display: 'grid', gridTemplateColumns: '46px 80px 1fr 80px 100px 70px',
+                padding: '14px 20px',
+                borderBottom: i < recent.length - 1 ? `1px solid ${c.border}` : 'none',
+                alignItems: 'center', fontFamily: c.fontMono, fontSize: 12, color: c.text,
+              }}>
+                <span style={{ color: c.textMute }}>{String(i + 1).padStart(2, '0')}</span>
+                <span style={{ color: c.textDim }}>{s.date.slice(5)}</span>
+                <span style={{ fontFamily: c.fontDisp, fontWeight: 700, letterSpacing: 0.3, fontSize: 13 }}>{s.planName}</span>
+                <span>{Math.round((s.duration || 0) / 60)}m</span>
+                <span>{fmtNum(Math.round(s.totalVolume || 0))} <span style={{ color: c.textMute }}>kg</span></span>
+                <span style={{ color: c.primary, fontWeight: 700 }}>+{s.xp || '—'}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* WEEK GRID */}
+      <section style={{ padding: '36px 40px 60px' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginBottom: 24 }}>
+          <span style={{ fontFamily: c.fontMono, fontSize: 10, color: c.primary, letterSpacing: 2, fontWeight: 700 }}>§.03</span>
+          <h2 style={{ fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 30, letterSpacing: -1, color: c.text, textTransform: 'uppercase' }}>THIS WEEK</h2>
+          <div style={{ flex: 1, height: 1, background: c.borderHi, opacity: 0.25 }} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 8 }}>
+          {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((day, i) => {
+            const s = weekSessions[i];
+            const isToday = i === (new Date().getDay() + 6) % 7;
+            return (
+              <div key={i} style={{
+                background: s ? c.card : c.surface,
+                border: `1px solid ${isToday ? c.primary : c.borderHi}`,
+                padding: '14px 14px 16px', position: 'relative', minHeight: 120,
+              }}>
+                {isToday && <CornerFrame c={c} color={c.primary} />}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <span style={{ fontFamily: c.fontMono, fontSize: 9.5, color: isToday ? c.primary : c.textMute, letterSpacing: 1.5, fontWeight: 700 }}>{day}</span>
+                </div>
+                {s ? (<>
+                  <div style={{ fontFamily: c.fontDisp, fontStyle: 'italic', fontWeight: 900, fontSize: 28, color: c.primary, lineHeight: 0.9, letterSpacing: -1 }}>
+                    {Math.round((s.duration || 0) / 60)}m
+                  </div>
+                  <div style={{ fontFamily: c.fontMono, fontSize: 9, color: c.textMute, letterSpacing: 1.3, fontWeight: 700, marginTop: 3 }}>DURATION</div>
+                  <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px solid ${c.border}` }}>
+                    <div style={{ fontFamily: c.fontDisp, fontSize: 11, fontWeight: 700, color: c.text, letterSpacing: 0.3 }}>{s.planName}</div>
+                    {s.xp && <div style={{ fontFamily: c.fontMono, fontSize: 9, color: c.textDim, marginTop: 2 }}>+{s.xp} XP</div>}
+                  </div>
+                </>) : (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 80, color: c.textMute }}>
+                    <svg width="28" height="28" viewBox="0 0 28 28">
+                      <line x1="4" y1="4" x2="24" y2="24" stroke="currentColor" strokeWidth="1" opacity="0.2" />
+                      <line x1="24" y1="4" x2="4" y2="24" stroke="currentColor" strokeWidth="1" opacity="0.2" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
     </div>
-  </div>);
+  );
 }
